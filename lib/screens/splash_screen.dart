@@ -1,8 +1,7 @@
-// ===================== SPLASH SCREEN =====================
 // lib/screens/splash_screen.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'onboarding_screen.dart'; // 👈 import karo
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,37 +11,29 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  // ===================== INIT STATE =====================
   @override
   void initState() {
     super.initState();
 
-    // Redirect after 3 seconds
+    // Redirect after 3 seconds → OnboardingScreen
     Timer(const Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/main');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
     });
   }
 
-  // ===================== BUILD METHOD =====================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF636B2F), // Primary color
-
+      backgroundColor: const Color(0xFF636B2F),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            // --------------------- APP LOGO ---------------------
-            Icon(
-              Icons.shopping_bag,
-              size: 80,
-              color: Color(0xFFD4DE95), // Accent color
-            ),
-
+            Icon(Icons.shopping_bag, size: 80, color: Color(0xFFD4DE95)),
             SizedBox(height: 20),
-
-            // --------------------- APP NAME ---------------------
             Text(
               "Ecommerce",
               style: TextStyle(

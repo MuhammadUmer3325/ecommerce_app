@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
-import 'screens/splash_screen.dart';
+import 'screens/splash_screen.dart'; 
 
 void main() {
   runApp(const EcommerceApp());
@@ -14,17 +14,10 @@ class EcommerceApp extends StatelessWidget {
     return MaterialApp(
       title: "Ecommerce",
       debugShowCheckedModeBanner: false,
-
-      // ===================== THEME =====================
       theme: AppTheme.lightTheme,
 
-      // ===================== STARTING SCREEN =====================
+      // ✅ sabse pehle SplashScreen chalegi
       home: const SplashScreen(),
-
-      // ===================== ROUTES =====================
-      routes: {
-      
-      },
     );
   }
 }
