@@ -1,6 +1,3 @@
-// ===================== HOME SCREEN =====================
-// lib/screens/home_screen.dart
-
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -9,108 +6,62 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // --------------------- APP BAR ---------------------
+      // ===================== APP BAR =====================
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFF636B2F), // Primary Color
-        title: Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const TextField(
-            decoration: InputDecoration(
-              hintText: "Search products...",
-              hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
-              border: InputBorder.none,
-              icon: Icon(Icons.search, color: Colors.grey),
-            ),
-          ),
-        ),
-        actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart, color: Colors.white),
-                onPressed: () {},
-              ),
-              // --------------------- CART BADGE ---------------------
-              Positioned(
-                right: 6,
-                top: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFD4DE95), // Accent
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Text(
-                    "2", // 👉 Future me cart count
-                    style: TextStyle(
-                      color: Color(0xFF3D4127),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 8),
+        backgroundColor: const Color(0xFF636B2F),
+
+        // Search icon
+        actions: const [
+          Icon(Icons.search, color: Colors.white),
+          SizedBox(width: 8),
         ],
       ),
 
-      // --------------------- BODY ---------------------
-      backgroundColor: Colors.white, // ✅ White Background
+      // ===================== BODY =====================
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ===================== BANNER =====================
             Container(
               height: 160,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                color: const Color(0xFFBAC095), // Secondary Color
+                color: const Color(0xFFBAC095),
               ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: 16,
-                    top: 30,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          "Big Sale!",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF3D4127), // Text Color
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          "Up to 50% OFF",
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Color(0xFF3D4127),
-                          ),
-                        ),
-                      ],
+              child: const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Big Sale!",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF3D4127),
+                      ),
                     ),
-                  ),
-                ],
+                    SizedBox(height: 8),
+                    Text(
+                      "Up to 50% OFF",
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Color(0xFF3D4127),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
             const SizedBox(height: 24),
 
-            // ===================== CATEGORY SECTION =====================
+            // ===================== CATEGORIES =====================
             const Text(
               "Categories",
               style: TextStyle(
@@ -171,7 +122,8 @@ class HomeScreen extends StatelessWidget {
                 _ProductCard(
                   name: "Smart Watch",
                   price: "\$149",
-                  image: Icons.watch),
+                  image: Icons.watch,
+                ),
                 _ProductCard(
                   name: "Headphones",
                   price: "\$99",
@@ -200,13 +152,13 @@ class _CategoryCard extends StatelessWidget {
       width: 80,
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
-        color: Color(0xFFBAC095),
+        color: const Color(0xFFBAC095),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 32, color: Color(0xFF3D4127)),
+          Icon(icon, size: 32, color: const Color(0xFF3D4127)),
           const SizedBox(height: 8),
           Text(
             label,
@@ -240,7 +192,7 @@ class _ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Color(0xFFBAC095),
+        color: const Color(0xFFBAC095),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Padding(
@@ -248,7 +200,6 @@ class _ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // --------------------- SALE BADGE ---------------------
             if (isSale)
               Align(
                 alignment: Alignment.topRight,
@@ -272,12 +223,10 @@ class _ProductCard extends StatelessWidget {
 
             const SizedBox(height: 6),
 
-            // --------------------- ICON / IMAGE ---------------------
-            Icon(image, size: 50, color: Color(0xFF3D4127)),
+            Icon(image, size: 50, color: const Color(0xFF3D4127)),
 
             const SizedBox(height: 10),
 
-            // --------------------- PRODUCT NAME ---------------------
             Text(
               name,
               style: const TextStyle(
@@ -286,7 +235,6 @@ class _ProductCard extends StatelessWidget {
               ),
             ),
 
-            // --------------------- PRICE ---------------------
             Text(
               price,
               style: const TextStyle(
@@ -297,10 +245,9 @@ class _ProductCard extends StatelessWidget {
 
             const Spacer(),
 
-            // --------------------- BUTTON ---------------------
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF636B2F), // Primary
+                backgroundColor: const Color(0xFF636B2F),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

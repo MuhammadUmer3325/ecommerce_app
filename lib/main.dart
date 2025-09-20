@@ -1,8 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'screens/splash_screen.dart';
-import 'screens/main_screen.dart';
 
 void main() {
   runApp(const EcommerceApp());
@@ -25,7 +23,7 @@ class EcommerceApp extends StatelessWidget {
 
       // ===================== ROUTES =====================
       routes: {
-        '/main': (context) => const MainScreen(),
+      
       },
     );
   }
