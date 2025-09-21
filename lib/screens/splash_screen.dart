@@ -1,5 +1,6 @@
 // lib/screens/splash_screen.dart
 import 'dart:async';
+import 'package:ecommerce/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'onboarding_screen.dart'; // 👈 import karo
 
@@ -27,19 +28,19 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF636B2F),
+      backgroundColor: AppColors.lightBlue1, // ✅ Updated color
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.shopping_bag, size: 80, color: Color(0xFFD4DE95)),
-            SizedBox(height: 20),
+          children: [
+            Icon(Icons.shopping_bag, size: 80, color: const Color.fromARGB(255, 255, 255, 255)), // ✅ Updated color
+            const SizedBox(height: 20),
             Text(
               "Ecommerce",
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFD4DE95),
+                color: const Color.fromARGB(255, 255, 255, 255), // ✅ Updated color
               ),
             ),
           ],

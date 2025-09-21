@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const primary = Color(0xFF636B2F);   // Dark Olive Green
-  static const secondary = Color(0xFFBAC095); // Muted Sage Green
-  static const accent = Color(0xFFD4DE95);    // Soft Lime/Yellowish Green
-  static const neutral = Color(0xFF3D4127);   // Dark Moss Green
+  // ===================== New Colors =====================
+  static const lightBlue1 = Color(0xFFBDCFFF);
+  static const lightBlue2 = Color(0xFF88C0FF);
+  static const lightPurple1 = Color(0xFFC8B6FE);
+  static const lightPurple2 = Color(0xFFE7C5FF);
+  static const lightPink = Color(0xFFFED5FF);
 }
 
 class AppFonts {

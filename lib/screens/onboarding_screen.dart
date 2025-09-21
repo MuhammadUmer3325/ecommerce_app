@@ -1,6 +1,7 @@
+import 'package:ecommerce/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import 'home_screen.dart'; // 👈 same folder me home_screen.dart hai to direct import ho jayega
+import 'home_screen.dart';
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
@@ -8,7 +9,7 @@ class OnboardingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF636B2F),
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
@@ -19,7 +20,7 @@ class OnboardingScreen extends StatelessWidget {
 
               // ===================== LOTTIE ANIMATION =====================
               Lottie.asset(
-                "assets/animations/welcome.json", // 👈 yahan welcome.json use karo
+                "assets/animations/welcome.json",
                 height: 200,
                 repeat: true,
                 fit: BoxFit.contain,
@@ -27,45 +28,61 @@ class OnboardingScreen extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              const Text(
+              // ===================== TITLE =====================
+              Text(
                 "Welcome to Ecommerce",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: AppColors.lightPurple1,
+                  shadows: const [
+                    Shadow(
+                      offset: Offset(1, 1),
+                      blurRadius: 3,
+                      color: Colors.black26,
+                    ),
+                  ],
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              const Text(
+              // ===================== SUBTITLE =====================
+              Text(
                 "Discover the latest products at the best prices. Your shopping journey starts here!",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.white70,
+                  color: AppColors.lightPurple1,
+                  shadows: const [
+                    Shadow(
+                      offset: Offset(1, 1),
+                      blurRadius: 2,
+                      color: Colors.black26,
+                    ),
+                  ],
                 ),
               ),
 
               const Spacer(),
 
-              // Get Started Button
+              // ===================== GET STARTED BUTTON =====================
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD4DE95),
-                  foregroundColor: const Color(0xFF3D4127),
+                  backgroundColor: AppColors.lightPurple1,
+                  foregroundColor: const Color.fromARGB(255, 255, 255, 255),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 60,
                     vertical: 28,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
-                    
                   ),
+                  elevation: 5, // ✅ button shadow
+                  shadowColor: Colors.black26, // ✅ shadow color
                 ),
                 onPressed: () {
-                  // 👉 HomeScreen pe navigate karega
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
