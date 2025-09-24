@@ -1,33 +1,42 @@
+import 'package:ecommerce/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
-import '../constants/app_constants.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static ThemeData lightTheme = ThemeData(
     // ===================== COLORS =====================
-    primaryColor: AppColors.lightBlue1,
-    scaffoldBackgroundColor: AppColors.lightBlue2,
-    fontFamily: AppFonts.primaryFont,
+    primaryColor: AppColors.main,
+    scaffoldBackgroundColor: AppColors.bg,
 
     // ===================== APP BAR THEME =====================
-    appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.lightBlue1,
+    appBarTheme: AppBarTheme(
+      backgroundColor: AppColors.main,
       elevation: 0,
-      titleTextStyle: TextStyle(
-        color: Colors.white,
+      titleTextStyle: GoogleFonts.poppins(
+        color: AppColors.light,
         fontSize: 18,
         fontWeight: FontWeight.bold,
       ),
-      iconTheme: IconThemeData(color: Colors.white),
+      iconTheme: const IconThemeData(color: AppColors.light),
     ),
 
     // ===================== TEXT THEME =====================
-    textTheme: const TextTheme(
-      bodyLarge: TextStyle(
-        color: AppColors.lightPurple1,
-        fontSize: 16,
+    textTheme: TextTheme(
+      // ✅ Heading
+      headlineLarge: GoogleFonts.poppins(
+        color: AppColors.light,
+        fontSize: 22,
+        fontWeight: FontWeight.bold,
       ),
-      bodyMedium: TextStyle(
-        color: AppColors.lightPurple2,
+      // ✅ Subheading
+      headlineMedium: GoogleFonts.montserrat(
+        color: AppColors.light,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
+      // ✅ Body
+      bodyMedium: GoogleFonts.roboto(
+        color: AppColors.hint,
         fontSize: 14,
       ),
     ),
@@ -35,17 +44,20 @@ class AppTheme {
     // ===================== ELEVATED BUTTON THEME =====================
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.lightBlue1,
-        foregroundColor: Colors.white,
-        textStyle: const TextStyle(
+        backgroundColor: AppColors.main,
+        foregroundColor: AppColors.light,
+        textStyle: GoogleFonts.poppins(
           fontWeight: FontWeight.bold,
+        ),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
       ),
     ),
 
     // ===================== ADDITIONAL COLORS =====================
     colorScheme: ColorScheme.fromSwatch().copyWith(
-      secondary: AppColors.lightPink, // floating buttons, sliders, switches
+      secondary: AppColors.hint, // sliders, switches, FAB etc.
     ),
   );
 }

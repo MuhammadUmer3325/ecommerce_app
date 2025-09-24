@@ -28,19 +28,23 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightBlue1, // ✅ Updated color
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255), // ✅ Background color from new palette
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.shopping_bag, size: 80, color: const Color.fromARGB(255, 255, 255, 255)), // ✅ Updated color
-            const SizedBox(height: 20),
+          children: const [
+            Icon(
+              Icons.shopping_bag,
+              size: 80,
+              color: AppColors.main, // ✅ Icon color from new palette
+            ),
+            SizedBox(height: 20),
             Text(
               "Ecommerce",
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: const Color.fromARGB(255, 255, 255, 255), // ✅ Updated color
+                color: AppColors.main, // ✅ Text color from new palette
               ),
             ),
           ],
