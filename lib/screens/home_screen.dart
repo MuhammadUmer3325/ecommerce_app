@@ -31,32 +31,69 @@ class _HomeScreenState extends State<HomeScreen> {
       // ===================== APP BAR =====================
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AppColors.main, // ✅ Onyx
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const CircleAvatar(
-              backgroundColor: Color.fromARGB(255, 255, 255, 255), // ✅ Platinum
-              child: Icon(Icons.person, color: AppColors.bg), // ✅ Graphite
+            icon: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white, // ✅ Background white
+                border: Border.all(
+                  color: AppColors.hint, // ✅ Border gray
+                  width: 1, // ✅ Thickness of border
+                ),
+              ),
+              padding: const EdgeInsets.all(6), // ✅ Thoda andar jagah
+              child: const Icon(
+                Icons.person,
+                color: AppColors.dark, // ✅ Icon ka color (Graphite)
+              ),
             ),
             onPressed: () {
               Scaffold.of(context).openDrawer();
             },
           ),
         ),
-        title: const Text("ecommerce"),
-      
+
+        title: const Text(
+          "ecommerce",
+          style: TextStyle(
+            color: AppColors.dark, // ✅ Title dark color
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Color.fromARGB(255, 255, 255, 255)), // ✅ Platinum
-            onPressed: () {},
+          // 🔍 Search Button
+          Padding(
+            padding: const EdgeInsets.only(right: 4), // thoda right margin
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white, // ✅ White background
+                border: Border.all(
+                  color: AppColors.hint, // ✅ Gray border
+                  width: 1,
+                ),
+              ),
+              padding: const EdgeInsets.all(6),
+              child: const Icon(Icons.search, color: AppColors.dark),
+            ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart, color: Color.fromARGB(255, 255, 254, 254)), // ✅ Platinum
-            onPressed: () {},
+
+          // 🛒 Cart Button
+          Padding(
+            padding: const EdgeInsets.only(right: 8), // edge ke liye spacing
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                border: Border.all(color: AppColors.hint, width: 1),
+              ),
+              padding: const EdgeInsets.all(6),
+              child: const Icon(Icons.shopping_cart, color: AppColors.dark),
+            ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
 
@@ -76,22 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            ListTile(
-              leading: Icon(Icons.home),
-              title: Text("Home"),
-            ),
-            ListTile(
-              leading: Icon(Icons.shopping_cart),
-              title: Text("Cart"),
-            ),
-            ListTile(
-              leading: Icon(Icons.person),
-              title: Text("Profile"),
-            ),
-            ListTile(
-              leading: Icon(Icons.settings),
-              title: Text("Settings"),
-            ),
+            ListTile(leading: Icon(Icons.home), title: Text("Home")),
+            ListTile(leading: Icon(Icons.shopping_cart), title: Text("Cart")),
+            ListTile(leading: Icon(Icons.person), title: Text("Profile")),
+            ListTile(leading: Icon(Icons.settings), title: Text("Settings")),
           ],
         ),
       ),
@@ -109,9 +134,15 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: "Cart"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_cart),
+            label: "Cart",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: "Settings",
+          ),
         ],
       ),
     );
@@ -208,10 +239,30 @@ class _HomeBody extends StatelessWidget {
               int crossAxisCount = gridWidth > 600 ? 3 : 2;
 
               final products = [
-                {"name": "Smartphone", "price": "\$299", "icon": Icons.phone_android, "isSale": true},
-                {"name": "Laptop", "price": "\$799", "icon": Icons.laptop_mac, "isSale": true},
-                {"name": "Smart Watch", "price": "\$149", "icon": Icons.watch, "isSale": true},
-                {"name": "Headphones", "price": "\$99", "icon": Icons.headphones, "isSale": true},
+                {
+                  "name": "Smartphone",
+                  "price": "\$299",
+                  "icon": Icons.phone_android,
+                  "isSale": true,
+                },
+                {
+                  "name": "Laptop",
+                  "price": "\$799",
+                  "icon": Icons.laptop_mac,
+                  "isSale": true,
+                },
+                {
+                  "name": "Smart Watch",
+                  "price": "\$149",
+                  "icon": Icons.watch,
+                  "isSale": true,
+                },
+                {
+                  "name": "Headphones",
+                  "price": "\$99",
+                  "icon": Icons.headphones,
+                  "isSale": true,
+                },
               ];
 
               return GridView.builder(
@@ -260,7 +311,11 @@ class _CategoryCard extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 32, color: const Color.fromARGB(255, 255, 255, 255)), // ✅ Platinum
+          Icon(
+            icon,
+            size: 32,
+            color: const Color.fromARGB(255, 255, 255, 255),
+          ), // ✅ Platinum
           const SizedBox(height: 8),
           Text(
             label,
@@ -306,7 +361,10 @@ class _ProductCard extends StatelessWidget {
               Align(
                 alignment: Alignment.topRight,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color.fromARGB(255, 226, 36, 36), // ✅ Ash
                     borderRadius: BorderRadius.circular(12),
@@ -345,7 +403,10 @@ class _ProductCard extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
               onPressed: () {},
               child: const Text("Add to Cart"),

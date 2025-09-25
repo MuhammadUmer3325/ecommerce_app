@@ -10,10 +10,10 @@ class AppTheme {
 
     // ===================== APP BAR THEME =====================
     appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.main,
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       elevation: 0,
       titleTextStyle: GoogleFonts.poppins(
-        color: AppColors.light,
+        color: AppColors.dark,
         fontSize: 18,
         fontWeight: FontWeight.bold,
       ),
@@ -35,10 +35,7 @@ class AppTheme {
         fontWeight: FontWeight.w600,
       ),
       // ✅ Body
-      bodyMedium: GoogleFonts.roboto(
-        color: AppColors.hint,
-        fontSize: 14,
-      ),
+      bodyMedium: GoogleFonts.roboto(color: AppColors.hint, fontSize: 14),
     ),
 
     // ===================== ELEVATED BUTTON THEME =====================
@@ -46,9 +43,7 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.main,
         foregroundColor: AppColors.light,
-        textStyle: GoogleFonts.poppins(
-          fontWeight: FontWeight.bold,
-        ),
+        textStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
