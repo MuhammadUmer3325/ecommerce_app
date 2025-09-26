@@ -1,4 +1,5 @@
 import 'package:ecommerce/core/constants/app_constants.dart';
+import 'package:ecommerce/screens/auth/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,8 +26,8 @@ class OnboardingScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.light, // You can change this color
                 borderRadius: const BorderRadius.only(
-                   topLeft: Radius.circular(1000.0),
-                   topRight: Radius.circular(1000.0),
+                  topLeft: Radius.circular(1000.0),
+                  topRight: Radius.circular(1000.0),
                 ),
               ),
             ),
@@ -50,26 +51,27 @@ class OnboardingScreen extends StatelessWidget {
                   const SizedBox(height: 40),
 
                   // ===================== TITLE =====================
-Text(
-  "Welcome to Ecommerce",
-  textAlign: TextAlign.center,
-  style: GoogleFonts.roboto(
-    fontSize: 28,
-    fontWeight: FontWeight.bold, // heading ke liye bold hi rakh
-    color: AppColors.main,
-    letterSpacing: 0.5, // thoda spacing headings ko aur clean banati hai
- shadows: const [
-  Shadow(
-    offset: Offset(0, 1), // sirf neeche halka sa
-    blurRadius: 3,        // halka blur, soft look
-    color: Colors.black26, // light grey shadow
-  ),
-],
-  ),
-),
+                  Text(
+                    "Welcome to Ecommerce",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.roboto(
+                      fontSize: 28,
+                      fontWeight:
+                          FontWeight.bold, // heading ke liye bold hi rakh
+                      color: AppColors.main,
+                      letterSpacing:
+                          0.5, // thoda spacing headings ko aur clean banati hai
+                      shadows: const [
+                        Shadow(
+                          offset: Offset(0, 1), // sirf neeche halka sa
+                          blurRadius: 3, // halka blur, soft look
+                          color: Colors.black26, // light grey shadow
+                        ),
+                      ],
+                    ),
+                  ),
 
-
-const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
                   // ===================== SUBTITLE =====================
                   Text(
@@ -104,7 +106,7 @@ const SizedBox(height: 16),
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const HomeScreen(),
+                          builder: (context) => const LoginScreen(),
                         ),
                       );
                     },

@@ -43,7 +43,7 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.main,
         foregroundColor: AppColors.light,
-        textStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        textStyle: GoogleFonts.poppins(fontWeight: FontWeight.normal),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
         ),

@@ -160,7 +160,7 @@ class _HomeBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner
+          // ===================== BANNER CARD =====================
           Container(
             height: 160,
             decoration: BoxDecoration(
@@ -196,7 +196,7 @@ class _HomeBody extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Categories
+          // ===================== Categories =====================
           const Text(
             "Categories",
             style: TextStyle(
@@ -222,13 +222,13 @@ class _HomeBody extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Featured Products
+          // ===================== Featured Products =====================
           const Text(
             "Featured Products",
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.main, // ✅ Onyx
+              color: AppColors.main,
             ),
           ),
           const SizedBox(height: 12),
@@ -348,71 +348,95 @@ class _ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.bg, // ✅ Graphite
+        color: AppColors.hint, // ✅ Outer Card Background
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (isSale)
-              Align(
-                alignment: Alignment.topRight,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color.fromARGB(255, 226, 36, 36), // ✅ Ash
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    "SALE",
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 255, 255, 255), // ✅ Jet Black
+      child: Stack(
+        children: [
+          // ✅ Inner card with background image
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              image: const DecorationImage(
+                image: AssetImage("assets/images/laptop.png"),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+
+          // ✅ Foreground content (badge, text, button)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // SALE Badge
+                if (isSale)
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 226, 36, 36),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        "SALE",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
+
+                const SizedBox(height: 10),
+
+                // Product Name
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-            const SizedBox(height: 6),
-            Icon(image, size: 50, color: AppColors.light), // ✅ Platinum
-            const SizedBox(height: 10),
-            Text(
-              name,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.light, // ✅ Platinum
-              ),
-            ),
-            Text(
-              price,
-              style: const TextStyle(
-                color: AppColors.hint, // ✅ Ash
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.main, // ✅ Onyx
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+
+                // Product Price
+                Text(
+                  price,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+
+                // Button
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.dark,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  onPressed: () {},
+                  child: const Text(
+                    "Add to Cart",
+                    style: TextStyle(color: Colors.white), // ✅ White text
+                  ),
                 ),
-              ),
-              onPressed: () {},
-              child: const Text("Add to Cart"),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
