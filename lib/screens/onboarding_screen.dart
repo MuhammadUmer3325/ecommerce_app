@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:ecommerce/core/constants/app_constants.dart';
 import 'package:ecommerce/screens/auth/login_screen.dart';
 import 'package:flutter/material.dart';
@@ -21,13 +22,47 @@ class OnboardingScreen extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            child: Container(
-              height: screenHeight * 0.4,
-              decoration: BoxDecoration(
-                color: AppColors.light, // You can change this color
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(1000.0),
-                  topRight: Radius.circular(1000.0),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(1000.0),
+                topRight: Radius.circular(1000.0),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: 20,
+                  sigmaY: 20,
+                ), // 👈 strong blur
+                child: Container(
+                  height: screenHeight * 0.4,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.25), // upar light glass
+                        Colors.white.withOpacity(
+                          0.05,
+                        ), // neeche darker transparent
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(1000.0),
+                      topRight: Radius.circular(1000.0),
+                    ),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(
+                        0.3,
+                      ), // 👈 subtle glass border
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1), // depth ke liye
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

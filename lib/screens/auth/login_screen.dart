@@ -1,6 +1,7 @@
 import 'package:ecommerce/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
+import 'dart:ui';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,157 +16,227 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      backgroundColor: const Color.fromARGB(
-        255,
-        78,
-        78,
-        78,
-      ), // ✅ Dark background
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // ✅ App Logo / Icon
-                Icon(Icons.shopping_bag, size: 80, color: AppColors.dark),
-                const SizedBox(height: 20),
-
-                // ✅ Title
-                Text(
-                  "Welcome Back!",
-                  style: TextStyle(
-                    color: AppColors.dark,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Login to continue shopping",
-                  style: TextStyle(color: AppColors.hint, fontSize: 14),
-                ),
-
-                const SizedBox(height: 40),
-
-                // ✅ Email Field
-                TextField(
-                  controller: emailController,
-                  style: TextStyle(color: AppColors.light),
-                  decoration: InputDecoration(
-                    labelText: "Email",
-                    labelStyle: TextStyle(color: AppColors.hint),
-                    filled: true,
-                    fillColor: AppColors.dark,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      body: Stack(
+        children: [
+          // ===================== HALF ROUND BACKGROUND SHAPE =====================
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(1000.0),
+                topRight: Radius.circular(1000.0),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: 20,
+                  sigmaY: 20,
+                ), // 👈 strong blur
+                child: Container(
+                  height: screenHeight * 0.4,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.25), // upar light glass
+                        Colors.white.withOpacity(
+                          0.05,
+                        ), // neeche darker transparent
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    prefixIcon: Icon(
-                      Icons.email_outlined,
-                      color: AppColors.hint,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(1000.0),
+                      topRight: Radius.circular(1000.0),
                     ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // ✅ Password Field
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  style: TextStyle(color: AppColors.light),
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    labelStyle: TextStyle(color: AppColors.hint),
-                    filled: true,
-                    fillColor: AppColors.dark,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(
+                        0.3,
+                      ), // 👈 subtle glass border
+                      width: 1.2,
                     ),
-                    prefixIcon: Icon(Icons.lock_outline, color: AppColors.hint),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // ✅ Forgot Password Link
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      // TODO: Navigate to Forgot Password Screen
-                    },
-                    child: Text(
-                      "Forgot Password?",
-                      style: TextStyle(color: AppColors.light, fontSize: 14),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ✅ Login Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.main,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1), // depth ke liye
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HomeScreen(),
-                        ),
-                      );
-                    },
-                    child: Text(
-                      "Login",
-                      style: TextStyle(
-                        color: AppColors.light,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 30),
-
-                // ✅ Sign Up Redirect
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Don’t have an account?",
-                      style: TextStyle(color: AppColors.hint),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        // TODO: Navigate to Sign Up Screen
-                      },
-                      child: Text(
-                        "Sign Up",
-                        style: TextStyle(
-                          color: const Color.fromARGB(255, 255, 255, 255),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+
+          // ===================== LOGIN CONTENT =====================
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                children: [
+                  // 👆 Expanded se upar wala content center hoga
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // ✅ App Logo / Icon
+                        Icon(
+                          Icons.shopping_bag,
+                          size: 80,
+                          color: AppColors.dark,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // ✅ Title
+                        Text(
+                          "Welcome Back!",
+                          style: TextStyle(
+                            color: AppColors.dark,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Login to continue shopping",
+                          style: TextStyle(
+                            color: AppColors.bg,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        // ✅ Email Field
+                        TextField(
+                          controller: emailController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: "Email",
+                            hintStyle: const TextStyle(color: Colors.white),
+                            filled: true,
+                            fillColor: AppColors.dark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                              borderSide: BorderSide.none,
+                            ),
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.only(
+                                left: 20,
+                                right: 12,
+                              ),
+                              child: Icon(
+                                Icons.email_outlined,
+                                color: AppColors.light,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // ✅ Password Field
+                        TextField(
+                          controller: passwordController,
+                          obscureText: true,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: "Password",
+                            hintStyle: const TextStyle(color: Colors.white),
+                            filled: true,
+                            fillColor: AppColors.dark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                              borderSide: BorderSide.none,
+                            ),
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.only(
+                                left: 20,
+                                right: 12,
+                              ),
+                              child: Icon(
+                                Icons.lock_outline,
+                                color: AppColors.light,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // ✅ Forgot Password
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {},
+                            child: const Text(
+                              "Forgot Password?",
+                              style: TextStyle(
+                                color: Color.fromARGB(255, 228, 49, 49),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ===================== BUTTON + SIGN UP BOTTOM =====================
+                  Column(
+                    children: [
+                      // ✅ Login Button
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HomeScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text("Login"),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // ✅ Sign Up Redirect
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Don’t have an account?",
+                            style: TextStyle(color: AppColors.dark),
+                          ),
+                          TextButton(
+                            onPressed: () {},
+                            child: const Text(
+                              "Sign Up",
+                              style: TextStyle(
+                                color: AppColors.dark,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 70,
+                      ), // 👈 yeh neeche thoda aur space dega
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

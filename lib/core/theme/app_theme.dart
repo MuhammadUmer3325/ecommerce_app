@@ -6,53 +6,76 @@ class AppTheme {
   static ThemeData lightTheme = ThemeData(
     // ===================== COLORS =====================
     primaryColor: AppColors.main,
-    scaffoldBackgroundColor: AppColors.bg,
-
+    scaffoldBackgroundColor: Colors.white,
+    useMaterial3: false, // Material 2 styling (zyada stable)
     // ===================== APP BAR THEME =====================
     appBarTheme: AppBarTheme(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      backgroundColor: Colors.white,
       elevation: 0,
+      centerTitle: true,
       titleTextStyle: GoogleFonts.poppins(
         color: AppColors.dark,
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: FontWeight.bold,
       ),
-      iconTheme: const IconThemeData(color: AppColors.light),
+      iconTheme: IconThemeData(color: AppColors.dark, size: 22),
     ),
 
     // ===================== TEXT THEME =====================
     textTheme: TextTheme(
-      // ✅ Heading
+      // Headings
       headlineLarge: GoogleFonts.poppins(
-        color: AppColors.light,
-        fontSize: 22,
+        color: AppColors.dark,
+        fontSize: 24,
         fontWeight: FontWeight.bold,
       ),
-      // ✅ Subheading
       headlineMedium: GoogleFonts.montserrat(
-        color: AppColors.light,
-        fontSize: 18,
+        color: AppColors.dark,
+        fontSize: 20,
         fontWeight: FontWeight.w600,
       ),
-      // ✅ Body
+      headlineSmall: GoogleFonts.poppins(
+        color: AppColors.dark,
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+      ),
+
+      // Body
+      bodyLarge: GoogleFonts.roboto(color: AppColors.dark, fontSize: 16),
       bodyMedium: GoogleFonts.roboto(color: AppColors.hint, fontSize: 14),
+      bodySmall: GoogleFonts.roboto(color: AppColors.hint, fontSize: 12),
     ),
 
     // ===================== ELEVATED BUTTON THEME =====================
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.main,
+        backgroundColor: AppColors.dark,
         foregroundColor: AppColors.light,
-        textStyle: GoogleFonts.poppins(fontWeight: FontWeight.normal),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        elevation: 6,
+        shadowColor: Colors.black38,
+        textStyle: GoogleFonts.montserrat(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
         ),
       ),
     ),
 
-    // ===================== ADDITIONAL COLORS =====================
-    colorScheme: ColorScheme.fromSwatch().copyWith(
-      secondary: AppColors.hint, // sliders, switches, FAB etc.
+    // ===================== INPUT FIELD THEME =====================
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.dark,
+      hintStyle: TextStyle(color: Colors.white70),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(25),
+        borderSide: BorderSide.none,
+      ),
+      prefixIconColor: AppColors.light,
     ),
+
+    // ===================== ADDITIONAL COLORS =====================
+    colorScheme: ColorScheme.fromSwatch().copyWith(secondary: AppColors.main),
   );
 }
