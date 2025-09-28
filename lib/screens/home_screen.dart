@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:laptop_harbor/core/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.white, // ✅ Background white
                 border: Border.all(
                   color: AppColors.hint, // ✅ Border gray
-                  width: 1, // ✅ Thickness of border
+                  width: 1,
                 ),
               ),
               padding: const EdgeInsets.all(6), // ✅ Thoda andar jagah
@@ -54,11 +56,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        title: const Text(
+        // ✅ Orbitron font applied here
+        title: Text(
           "Laptop Harbor",
-          style: TextStyle(
-            color: AppColors.dark, // ✅ Title dark color
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
             fontWeight: FontWeight.bold,
+            fontSize: 20,
           ),
         ),
 
@@ -66,15 +70,12 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           // 🔍 Search Button
           Padding(
-            padding: const EdgeInsets.only(right: 4), // thoda right margin
+            padding: const EdgeInsets.only(right: 4),
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white, // ✅ White background
-                border: Border.all(
-                  color: AppColors.hint, // ✅ Gray border
-                  width: 1,
-                ),
+                color: Colors.white,
+                border: Border.all(color: AppColors.hint, width: 1),
               ),
               padding: const EdgeInsets.all(6),
               child: const Icon(Icons.search, color: AppColors.dark),
@@ -83,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // 🛒 Cart Button
           Padding(
-            padding: const EdgeInsets.only(right: 8), // edge ke liye spacing
+            padding: const EdgeInsets.only(right: 8),
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -417,21 +418,9 @@ class _ProductCard extends StatelessWidget {
 
                 // Button
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.dark,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                  ),
+                  style: AppTheme.cartButtonStyle,
                   onPressed: () {},
-                  child: const Text(
-                    "Add to Cart",
-                    style: TextStyle(color: Colors.white), // ✅ White text
-                  ),
+                  child: const Text("Add to Cart"),
                 ),
               ],
             ),

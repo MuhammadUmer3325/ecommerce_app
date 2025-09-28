@@ -63,6 +63,25 @@ class AppTheme {
       ),
     ),
 
+    // // ===================== ADD TO CART BUTTON THEME =====================
+    // textButtonTheme: TextButtonThemeData(
+    //   style: TextButton.styleFrom(
+    //     backgroundColor: AppColors.main, // ✅ Primary theme color
+    //     foregroundColor: AppColors.light, // ✅ White text
+    //     padding: const EdgeInsets.symmetric(
+    //       horizontal: 20,
+    //       vertical: 12,
+    //     ), // ✅ Compact size
+    //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    //     elevation: 4,
+    //     shadowColor: Colors.black26,
+    //     textStyle: GoogleFonts.montserrat(
+    //       fontSize: 14, // ✅ Smaller font
+    //       fontWeight: FontWeight.w600,
+    //     ),
+    //   ),
+    // ),
+
     // ===================== INPUT FIELD THEME =====================
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -78,5 +97,19 @@ class AppTheme {
 
     // ===================== ADDITIONAL COLORS =====================
     colorScheme: ColorScheme.fromSwatch().copyWith(secondary: AppColors.main),
+  );
+
+  // ✅ Add to Cart button style (product card ke liye)
+  static ButtonStyle cartButtonStyle = ElevatedButton.styleFrom(
+    backgroundColor: AppColors.dark,
+    foregroundColor: AppColors.light,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    textStyle: GoogleFonts.montserrat(
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+    ),
+    elevation: 4,
+    shadowColor: Colors.black26,
   );
 }

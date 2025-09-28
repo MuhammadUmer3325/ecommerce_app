@@ -2,7 +2,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
-import 'onboarding_screen.dart'; // 👈 import karo
+import 'onboarding_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,28 +29,23 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(
-        255,
-        255,
-        255,
-        255,
-      ), // ✅ Background color from new palette
+      backgroundColor: Colors.white, // ✅ Clean white background
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(
+          children: [
+            const Icon(
               Icons.shopping_bag,
               size: 80,
               color: AppColors.main, // ✅ Icon color from new palette
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text(
-              "Laptop Harbor",
-              style: TextStyle(
+              "LAPTOP HARBOR",
+              style: GoogleFonts.orbitron(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: AppColors.main, // ✅ Text color from new palette
+                color: AppColors.main,
               ),
             ),
           ],
