@@ -1,20 +1,22 @@
-import 'package:ecommerce/screens/auth/forget_password_screen.dart';
-import 'package:ecommerce/screens/auth/signup_screen.dart';
+import 'package:ecommerce/screens/auth/login_screen.dart';
 import 'package:ecommerce/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import 'dart:ui';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignupScreenState extends State<SignupScreen> {
+  final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -35,19 +37,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 topRight: Radius.circular(1000.0),
               ),
               child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: 20,
-                  sigmaY: 20,
-                ), // 👈 strong blur
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Container(
                   height: screenHeight * 0.4,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.white.withOpacity(0.25), // upar light glass
-                        Colors.white.withOpacity(
-                          0.05,
-                        ), // neeche darker transparent
+                        Colors.white.withOpacity(0.25),
+                        Colors.white.withOpacity(0.05),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -57,14 +54,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       topRight: Radius.circular(1000.0),
                     ),
                     border: Border.all(
-                      color: Colors.white.withOpacity(
-                        0.3,
-                      ), // 👈 subtle glass border
+                      color: Colors.white.withOpacity(0.3),
                       width: 1.2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1), // depth ke liye
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -75,13 +70,12 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          // ===================== LOGIN CONTENT =====================
+          // ===================== SIGNUP CONTENT =====================
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 children: [
-                  // 👆 Expanded se upar wala content center hoga
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -96,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // ✅ Title
                         Text(
-                          "Welcome Back!",
+                          "Create Account",
                           style: TextStyle(
                             color: AppColors.dark,
                             fontSize: 24,
@@ -105,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          "Login to continue shopping",
+                          "Sign up to start your journey",
                           style: TextStyle(
                             color: AppColors.bg,
                             fontSize: 14,
@@ -114,6 +108,30 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
 
                         const SizedBox(height: 40),
+
+                        // ✅ Full Name Field
+                        TextField(
+                          controller: nameController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: "Full Name",
+                            hintStyle: const TextStyle(color: Colors.white),
+                            filled: true,
+                            fillColor: AppColors.dark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                              borderSide: BorderSide.none,
+                            ),
+                            prefixIcon: const Padding(
+                              padding: EdgeInsets.only(left: 20, right: 12),
+                              child: Icon(
+                                Icons.person_outline,
+                                color: AppColors.light,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
                         // ✅ Email Field
                         TextField(
@@ -128,11 +146,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(25),
                               borderSide: BorderSide.none,
                             ),
-                            prefixIcon: Padding(
-                              padding: const EdgeInsets.only(
-                                left: 20,
-                                right: 12,
-                              ),
+                            prefixIcon: const Padding(
+                              padding: EdgeInsets.only(left: 20, right: 12),
                               child: Icon(
                                 Icons.email_outlined,
                                 color: AppColors.light,
@@ -140,7 +155,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 16),
 
                         // ✅ Password Field
@@ -157,11 +171,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(25),
                               borderSide: BorderSide.none,
                             ),
-                            prefixIcon: Padding(
-                              padding: const EdgeInsets.only(
-                                left: 20,
-                                right: 12,
-                              ),
+                            prefixIcon: const Padding(
+                              padding: EdgeInsets.only(left: 20, right: 12),
                               child: Icon(
                                 Icons.lock_outline,
                                 color: AppColors.light,
@@ -169,28 +180,27 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 16),
 
-                        const SizedBox(height: 10),
-
-                        // ✅ Forgot Password
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ForgetPasswordScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              "Forgot Password?",
-                              style: TextStyle(
-                                color: Color.fromARGB(255, 228, 49, 49),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                        // ✅ Confirm Password Field
+                        TextField(
+                          controller: confirmPasswordController,
+                          obscureText: true,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: "Confirm Password",
+                            hintStyle: const TextStyle(color: Colors.white),
+                            filled: true,
+                            fillColor: AppColors.dark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                              borderSide: BorderSide.none,
+                            ),
+                            prefixIcon: const Padding(
+                              padding: EdgeInsets.only(left: 20, right: 12),
+                              child: Icon(
+                                Icons.lock_outline,
+                                color: AppColors.light,
                               ),
                             ),
                           ),
@@ -199,11 +209,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  // ===================== BUTTON + SIGN UP BOTTOM =====================
+                  // ===================== BUTTON + LOGIN REDIRECT =====================
                   Column(
                     children: [
                       SizedBox(
-                        width: 370, // 👈 jitni chahiye utni width set karo
+                        width: 370,
                         child: ElevatedButton(
                           onPressed: () {
                             Navigator.pushReplacement(
@@ -213,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             );
                           },
-                          child: const Text("Login"),
+                          child: const Text("Sign Up"),
                         ),
                       ),
 
@@ -224,20 +234,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 370,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.transparent, // 👈 remove background
-                            foregroundColor:
-                                AppColors.dark, // 👈 text & icon color
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: AppColors.dark,
                             side: const BorderSide(
-                              color: AppColors.dark, // 👈 border color
-                              width: 1, // 👈 border thickness
+                              color: AppColors.dark,
+                              width: 1,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                30,
-                              ), // 👈 rounded edges
+                              borderRadius: BorderRadius.circular(30),
                             ),
-                            elevation: 0, // 👈 no shadow
+                            elevation: 0,
                           ),
                           onPressed: () {},
                           icon: Image.asset(
@@ -255,12 +261,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      // ==================== Sign Up Redirect ====================
+                      // ==================== Login Redirect ====================
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Text(
-                            "Don’t have an account?",
+                            "Already have an account?",
                             style: TextStyle(color: AppColors.dark),
                           ),
                           TextButton(
@@ -268,12 +274,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const SignupScreen(),
+                                  builder: (context) => const LoginScreen(),
                                 ),
                               );
                             },
                             child: const Text(
-                              "Sign Up",
+                              "Login",
                               style: TextStyle(
                                 color: AppColors.dark,
                                 fontWeight: FontWeight.bold,
@@ -282,9 +288,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(
-                        height: 70,
-                      ), // 👈 yeh neeche thoda aur space dega
+                      const SizedBox(height: 70),
                     ],
                   ),
                 ],
