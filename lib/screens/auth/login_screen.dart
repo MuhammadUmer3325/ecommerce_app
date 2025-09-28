@@ -1,7 +1,7 @@
-import 'package:ecommerce/screens/auth/forget_password_screen.dart';
-import 'package:ecommerce/screens/auth/signup_screen.dart';
-import 'package:ecommerce/screens/home_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:laptop_harbor/screens/auth/forget_password_screen.dart';
+import 'package:laptop_harbor/screens/auth/signup_screen.dart';
+import 'package:laptop_harbor/screens/home_screen.dart';
 import '../../core/constants/app_constants.dart';
 import 'dart:ui';
 

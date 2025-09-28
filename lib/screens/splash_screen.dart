@@ -1,7 +1,7 @@
 // lib/screens/splash_screen.dart
 import 'dart:async';
-import 'package:ecommerce/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
+import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'onboarding_screen.dart'; // 👈 import karo
 
 class SplashScreen extends StatefulWidget {
@@ -28,7 +28,12 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255), // ✅ Background color from new palette
+      backgroundColor: const Color.fromARGB(
+        255,
+        255,
+        255,
+        255,
+      ), // ✅ Background color from new palette
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -40,7 +45,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             SizedBox(height: 20),
             Text(
-              "Ecommerce",
+              "Laptop Harbor",
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,

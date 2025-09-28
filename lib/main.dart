@@ -3,16 +3,16 @@ import 'core/theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
-  runApp(const EcommerceApp());
+  runApp(const LaptopHarborApp()); // 👈 class rename
 }
 
-class EcommerceApp extends StatelessWidget {
-  const EcommerceApp({super.key});
+class LaptopHarborApp extends StatelessWidget {
+  const LaptopHarborApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Ecommerce",
+      title: "Laptop Harbor", // 👈 new app name
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
 

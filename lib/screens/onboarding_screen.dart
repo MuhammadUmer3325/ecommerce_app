@@ -1,7 +1,7 @@
 import 'dart:ui';
-import 'package:ecommerce/core/constants/app_constants.dart';
-import 'package:ecommerce/screens/auth/login_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:laptop_harbor/core/constants/app_constants.dart';
+import 'package:laptop_harbor/screens/auth/login_screen.dart';
 import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
@@ -87,7 +87,7 @@ class OnboardingScreen extends StatelessWidget {
 
                   // ===================== TITLE =====================
                   Text(
-                    "Welcome to Ecommerce",
+                    "Welcome to Laptop Harbor",
                     textAlign: TextAlign.center,
                     style: GoogleFonts.roboto(
                       fontSize: 28,
@@ -110,7 +110,7 @@ class OnboardingScreen extends StatelessWidget {
 
                   // ===================== SUBTITLE =====================
                   Text(
-                    "Discover the latest products at the best prices. Your shopping journey starts here!",
+                    "Upgrade your tech game the latest laptops and gadgets at unbeatable prices!",
                     textAlign: TextAlign.center,
                     style: GoogleFonts.roboto(
                       fontSize: 16,

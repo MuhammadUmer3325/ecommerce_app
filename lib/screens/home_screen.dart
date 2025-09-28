@@ -1,5 +1,5 @@
-import 'package:ecommerce/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
+import 'package:laptop_harbor/core/constants/app_constants.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
 
         title: const Text(
-          "ecommerce",
+          "Laptop Harbor",
           style: TextStyle(
             color: AppColors.dark, // ✅ Title dark color
             fontWeight: FontWeight.bold,
