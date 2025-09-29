@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
+import 'product_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -100,25 +101,204 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // ===================== DRAWER =====================
       drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: const [
-            DrawerHeader(
-              decoration: BoxDecoration(color: AppColors.main), // ✅ Onyx
-              child: Text(
-                "Welcome User",
-                style: TextStyle(
-                  color: AppColors.light, // ✅ Platinum
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+        width: MediaQuery.of(context).size.width, // ✅ Full screen
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ✅ BACK BUTTON + SETTINGS IN ONE ROW
+              Padding(
+                padding: const EdgeInsets.only(top: 16, left: 16),
+                child: Row(
+                  children: [
+                    // ✅ Back Button
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.dark,
+                        border: Border.all(color: AppColors.hint, width: 1),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ),
+
+                    // ✅ Centered Title
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          "Settings",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.dark,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 48), // back button ke balance ke liye
+                  ],
                 ),
               ),
-            ),
-            ListTile(leading: Icon(Icons.home), title: Text("Home")),
-            ListTile(leading: Icon(Icons.shopping_cart), title: Text("Cart")),
-            ListTile(leading: Icon(Icons.person), title: Text("Profile")),
-            ListTile(leading: Icon(Icons.settings), title: Text("Settings")),
-          ],
+
+              const SizedBox(height: 20),
+
+              // ✅ BODY CONTENT SCROLLABLE
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // ✅ PROFILE CARD
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          radius: 24,
+                          backgroundImage: AssetImage(
+                            "assets/images/profile.png",
+                          ),
+                        ),
+                        title: const Text(
+                          "User",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        subtitle: const Text("Product/UI Designer"),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.pushNamed(context, "/profile");
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ✅ OTHER SETTINGS TITLE
+                    const Text(
+                      "Other settings",
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // ✅ SETTINGS SECTION (CARD STYLE)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          const ListTile(
+                            leading: Icon(Icons.person),
+                            title: Text("Profile details"),
+                            trailing: Icon(Icons.chevron_right),
+                          ),
+                          const Divider(height: 1),
+                          const ListTile(
+                            leading: Icon(Icons.lock),
+                            title: Text("Password"),
+                            trailing: Icon(Icons.chevron_right),
+                          ),
+                          const Divider(height: 1),
+                          const ListTile(
+                            leading: Icon(Icons.notifications),
+                            title: Text("Notifications"),
+                            trailing: Icon(Icons.chevron_right),
+                          ),
+                          const Divider(height: 1),
+                          SwitchListTile(
+                            secondary: const Icon(Icons.dark_mode),
+                            title: const Text("Dark mode"),
+                            value: false,
+                            onChanged: (val) {},
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ✅ ABOUT SECTION
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: const [
+                          ListTile(
+                            leading: Icon(Icons.info),
+                            title: Text("About application"),
+                            trailing: Icon(Icons.chevron_right),
+                          ),
+                          Divider(height: 1),
+                          ListTile(
+                            leading: Icon(Icons.help),
+                            title: Text("Help / FAQ"),
+                            trailing: Icon(Icons.chevron_right),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ✅ LOGOUT & DEACTIVATE FIXED AT BOTTOM
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const ListTile(
+                        leading: Icon(Icons.delete_forever, color: Colors.red),
+                        title: Text(
+                          "Deactivate my account",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                        trailing: Icon(Icons.chevron_right, color: Colors.red),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const ListTile(
+                        leading: Icon(Icons.logout, color: Colors.red),
+                        title: Text(
+                          "Logout",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                        trailing: Icon(Icons.chevron_right, color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Text(
+                "Laptop Harbor",
+                //  style: TextStyle(color: AppColors.dark),
+              ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
 
@@ -347,85 +527,103 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.hint, // ✅ Outer Card Background
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Stack(
-        children: [
-          // ✅ Inner card with background image
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              image: const DecorationImage(
-                image: AssetImage("assets/images/laptop.png"),
-                fit: BoxFit.cover,
-              ),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailsScreen(
+              productName: name,
+              productPrice: price,
+              productImage: "assets/images/laptop.png",
+              productDescription:
+                  "This is a sample description of the $name. High performance, best for work and gaming.",
             ),
           ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.hint,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Stack(
+          children: [
+            // ✅ Inner background image
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                image: const DecorationImage(
+                  image: AssetImage("assets/images/laptop.png"),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
 
-          // ✅ Foreground content (badge, text, button)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // SALE Badge
-                if (isSale)
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 226, 36, 36),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        "SALE",
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+            // ✅ Foreground content
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // SALE Badge
+                  if (isSale)
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(255, 226, 36, 36),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          "SALE",
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
+
+                  const SizedBox(height: 10),
+
+                  // Product Name
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
 
-                const SizedBox(height: 10),
-
-                // Product Name
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  // Product Price
+                  Text(
+                    price,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
 
-                // Product Price
-                Text(
-                  price,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  // Button
+                  ElevatedButton(
+                    style: AppTheme.cartButtonStyle,
+                    onPressed: () {
+                      // Add to cart ka logic yahan ayega
+                    },
+                    child: const Text("Add to Cart"),
                   ),
-                ),
-
-                // Button
-                ElevatedButton(
-                  style: AppTheme.cartButtonStyle,
-                  onPressed: () {},
-                  child: const Text("Add to Cart"),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
