@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "782899460341",
+    "project_id": "laptop-harbor-9c85c",
+    "storage_bucket": "laptop-harbor-9c85c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:782899460341:android:fc23c7ae262afa7755adbc",
+        "android_client_info": {
+          "package_name": "com.example.ecommerce"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsukr1qkJ-bd01usIU2tC1du7KFmPcjVY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
