@@ -1,9 +1,12 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'core/theme/app_theme.dart';
+import 'package:laptop_harbor/core/theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
-  runApp(const LaptopHarborApp()); // 👈 class rename
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(); // Firebase initialize
+  runApp(const LaptopHarborApp());
 }
 
 class LaptopHarborApp extends StatelessWidget {
@@ -12,11 +15,11 @@ class LaptopHarborApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Laptop Harbor", // 👈 new app name
+      title: "Laptop Harbor",
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
 
-      // ✅ sabse pehle SplashScreen chalegi
+      // App start hone par sabse pehle SplashScreen chalegi
       home: const SplashScreen(),
     );
   }

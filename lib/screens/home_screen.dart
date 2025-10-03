@@ -17,15 +17,35 @@ class _HomeScreenState extends State<HomeScreen> {
   // ✅ Screens for bottom nav
   final List<Widget> _screens = [
     const _HomeBody(),
-    Center(child: Text("Cart Screen")),
-    Center(child: Text("Profile Screen")),
-    Center(child: Text("Settings Screen")),
+    const Center(child: Text("Cart Screen")),
+    const Center(child: Text("Profile Screen")),
   ];
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  // ✅ Bottom Nav Icon + Dot
+  Widget _buildNavIcon(IconData icon, int index) {
+    final bool isSelected = _selectedIndex == index;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: isSelected ? AppColors.main : AppColors.hint),
+        const SizedBox(height: 4),
+        if (isSelected)
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.main,
+            ),
+          ),
+      ],
+    );
   }
 
   @override
@@ -39,17 +59,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white, // ✅ Background white
-                border: Border.all(
-                  color: AppColors.hint, // ✅ Border gray
-                  width: 1,
-                ),
+                color: Colors.white,
+                border: Border.all(color: AppColors.hint, width: 1),
               ),
-              padding: const EdgeInsets.all(6), // ✅ Thoda andar jagah
-              child: const Icon(
-                Icons.person,
-                color: AppColors.dark, // ✅ Icon ka color (Graphite)
-              ),
+              padding: const EdgeInsets.all(6),
+              child: const Icon(Icons.person, color: AppColors.dark),
             ),
             onPressed: () {
               Scaffold.of(context).openDrawer();
@@ -57,7 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        // ✅ Orbitron font applied here
         title: Text(
           "Laptop Harbor",
           style: GoogleFonts.orbitron(
@@ -68,8 +81,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
 
         centerTitle: true,
+
         actions: [
-          // 🔍 Search Button
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: Container(
@@ -83,7 +96,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // 🛒 Cart Button
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: Container(
@@ -101,16 +113,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // ===================== DRAWER =====================
       drawer: Drawer(
-        width: MediaQuery.of(context).size.width, // ✅ Full screen
+        width: MediaQuery.of(context).size.width,
         child: SafeArea(
           child: Column(
             children: [
-              // ✅ BACK BUTTON + SETTINGS IN ONE ROW
+              // 🔙 Back + Title
               Padding(
                 padding: const EdgeInsets.only(top: 16, left: 16),
                 child: Row(
                   children: [
-                    // ✅ Back Button
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -124,8 +135,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                       ),
                     ),
-
-                    // ✅ Centered Title
                     Expanded(
                       child: Center(
                         child: Text(
@@ -138,20 +147,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-
-                    const SizedBox(width: 48), // back button ke balance ke liye
+                    const SizedBox(width: 48),
                   ],
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              // ✅ BODY CONTENT SCROLLABLE
+              // 👤 Profile Card
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // ✅ PROFILE CARD
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -181,15 +188,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     const SizedBox(height: 20),
-
-                    // ✅ OTHER SETTINGS TITLE
                     const Text(
                       "Other settings",
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 10),
 
-                    // ✅ SETTINGS SECTION (CARD STYLE)
+                    // ⚙️ Settings Options
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -227,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 20),
 
-                    // ✅ ABOUT SECTION
+                    // ℹ️ About & Help
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -253,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // ✅ LOGOUT & DEACTIVATE FIXED AT BOTTOM
+              // 🚪 Logout & Deactivate
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -290,12 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
-              Text(
-                "Laptop Harbor",
-                //  style: TextStyle(color: AppColors.dark),
-              ),
-
+              const Text("Laptop Harbor"),
               const SizedBox(height: 20),
             ],
           ),
@@ -303,26 +303,30 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       // ===================== BODY =====================
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255), // ✅ Platinum
+      backgroundColor: Colors.white,
       body: _screens[_selectedIndex],
 
       // ===================== BOTTOM NAV BAR =====================
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: AppColors.main, // ✅ Onyx
-        unselectedItemColor: AppColors.hint, // ✅ Ash
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+        selectedItemColor: AppColors.main,
+        unselectedItemColor: AppColors.hint,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: "Cart",
+            icon: _buildNavIcon(Icons.home, 0),
+            label: "",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: "Settings",
+            icon: _buildNavIcon(Icons.shopping_cart, 1),
+            label: "",
+          ),
+          BottomNavigationBarItem(
+            icon: _buildNavIcon(Icons.person, 2),
+            label: "",
           ),
         ],
       ),
@@ -341,33 +345,161 @@ class _HomeBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ===================== BANNER CARD =====================
-          Container(
-            height: 160,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: AppColors.hint, // ✅ Graphite
-            ),
-            child: const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+          // ===================== HORIZONTAL CARDS SECTION =====================
+          SizedBox(
+            height: 180, // card height
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 children: [
-                  Text(
-                    "Big Sale!",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 255, 255, 255), // ✅ Platinum
+                  // -------- CARD 1 --------
+                  Container(
+                    width: 280, // fixed width for horizontal card
+                    margin: const EdgeInsets.only(left: 16, right: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: const DecorationImage(
+                        image: AssetImage(
+                          "assets/images/gaming_laptop_banner.png",
+                        ),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withOpacity(0.4),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      alignment: Alignment.bottomLeft,
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Gaming Laptops",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            "High performance machines",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    "Up to 50% OFF",
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Color.fromARGB(255, 255, 255, 255), // ✅ Platinum
+
+                  // -------- CARD 2 --------
+                  Container(
+                    width: 280,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: const DecorationImage(
+                        image: AssetImage("assets/images/ultrabook_banner.png"),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withOpacity(0.4),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      alignment: Alignment.bottomLeft,
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Ultrabooks",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            "Lightweight & portable",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // -------- CARD 3 --------
+                  Container(
+                    width: 280,
+                    margin: const EdgeInsets.only(left: 8, right: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: const DecorationImage(
+                        image: AssetImage(
+                          "assets/images/business_laptop_banner.png",
+                        ),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withOpacity(0.4),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      alignment: Alignment.bottomLeft,
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Business Laptops",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            "Reliable for office work",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -377,13 +509,163 @@ class _HomeBody extends StatelessWidget {
 
           const SizedBox(height: 24),
 
+          // ===================== FEATURED BRANDS SECTION =====================
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ----- TITLE -----
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Text(
+                  "Featured Brands",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.dark,
+                  ),
+                ),
+              ),
+
+              // ----- BRANDS SCROLL -----
+              SizedBox(
+                height: 90, // brand card ka height
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 16),
+
+                      // ----- BRAND 1: DELL -----
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: Dell products screen open karo
+                        },
+                        child: Container(
+                          width: 90,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 6,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset(
+                              "assets/brands/dell_logo.png",
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ----- BRAND 2: HP -----
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: HP products screen
+                        },
+                        child: Container(
+                          width: 90,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 6,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset(
+                              "assets/brands/hp_logo.png",
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ----- BRAND 3: LENOVO -----
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: Lenovo products screen
+                        },
+                        child: Container(
+                          width: 90,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 6,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset(
+                              "assets/brands/lenovo_logo.png",
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // ----- BRAND 4: ASUS -----
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: Asus products screen
+                        },
+                        child: Container(
+                          width: 90,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 6,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset(
+                              "assets/brands/asus_logo.png",
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
           // ===================== Categories =====================
           const Text(
             "Categories",
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.main, // ✅ Onyx
+              color: AppColors.main,
             ),
           ),
           const SizedBox(height: 12),
@@ -486,24 +768,20 @@ class _CategoryCard extends StatelessWidget {
       width: 80,
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
-        color: AppColors.hint, // ✅ Graphite
+        color: AppColors.hint,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 32,
-            color: const Color.fromARGB(255, 255, 255, 255),
-          ), // ✅ Platinum
+          Icon(icon, size: 32, color: Colors.white),
           const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: Color.fromARGB(255, 255, 255, 255), // ✅ Platinum
+              color: Colors.white,
             ),
           ),
         ],
@@ -549,7 +827,7 @@ class _ProductCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // ✅ Inner background image
+            // Background Image
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
@@ -559,15 +837,13 @@ class _ProductCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // ✅ Foreground content
+            // Foreground Content
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // SALE Badge
                   if (isSale)
                     Align(
                       alignment: Alignment.topRight,
@@ -593,7 +869,6 @@ class _ProductCard extends StatelessWidget {
 
                   const SizedBox(height: 10),
 
-                  // Product Name
                   Text(
                     name,
                     style: const TextStyle(
@@ -602,7 +877,6 @@ class _ProductCard extends StatelessWidget {
                     ),
                   ),
 
-                  // Product Price
                   Text(
                     price,
                     style: const TextStyle(
@@ -611,12 +885,9 @@ class _ProductCard extends StatelessWidget {
                     ),
                   ),
 
-                  // Button
                   ElevatedButton(
                     style: AppTheme.cartButtonStyle,
-                    onPressed: () {
-                      // Add to cart ka logic yahan ayega
-                    },
+                    onPressed: () {},
                     child: const Text("Add to Cart"),
                   ),
                 ],

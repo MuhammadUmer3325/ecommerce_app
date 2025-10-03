@@ -33,6 +33,11 @@ dependencies:
 
   lottie: ^3.1.0 
   google_fonts: ^6.3.2
+  firebase_core: ^4.1.1
+  firebase_auth: ^6.1.0
+  cloud_firestore: ^6.0.2
+  firebase_storage: ^13.0.2
+  google_sign_in: ^7.2.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -66,6 +71,14 @@ flutter:
     - assets/animations/welcome.json
     - assets/images/laptop.png
     - assets/images/google_logo.png
+    - assets/icons/laptop_icon.png
+    - assets/images/gaming_laptop_banner.png
+    - assets/images/ultrabook_banner.png
+    - assets/images/business_laptop_banner.png
+    - assets/brands/dell_logo.png
+    - assets/brands/hp_logo.png
+    - assets/brands/lenovo_logo.png
+    - assets/brands/asus_logo.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

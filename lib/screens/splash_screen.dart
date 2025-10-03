@@ -1,9 +1,9 @@
 // lib/screens/splash_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'onboarding_screen.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,18 +12,47 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
 
-    // Redirect after 3 seconds → OnboardingScreen
+    // ✅ Animation Controller
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.7,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+
+    _controller.forward();
+
+    // ✅ Redirect after 3 seconds → OnboardingScreen
     Timer(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const OnboardingScreen()),
       );
     });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -34,18 +63,28 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.shopping_bag,
-              size: 80,
-              color: AppColors.main, // ✅ Icon color from new palette
+            // ✅ Logo with animation
+            ScaleTransition(
+              scale: _scaleAnimation,
+              child: Image.asset("assets/icons/laptop_icon.png", height: 120),
             ),
-            const SizedBox(height: 20),
-            Text(
-              "LAPTOP HARBOR",
-              style: GoogleFonts.orbitron(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.main,
+
+            const SizedBox(height: 12),
+
+            // ✅ App Name Text with fade + scale
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: Text(
+                  "LAPTOP HARBOR",
+                  style: GoogleFonts.orbitron(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.main,
+                    letterSpacing: -0.5,
+                  ),
+                ),
               ),
             ),
           ],
