@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
+import 'package:laptop_harbor/screens/auth/login_screen.dart';
+import 'package:laptop_harbor/screens/auth/signup_screen.dart';
 import 'product_details_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,13 +16,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  User? _currentUser; // ✅ Track user manually
 
-  // ✅ Screens for bottom nav
   final List<Widget> _screens = [
     const _HomeBody(),
     const Center(child: Text("Cart Screen")),
     const Center(child: Text("Profile Screen")),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔥 Auth listener — runs only once
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      setState(() {
+        _currentUser = user;
+      });
+    });
+
+    // Initial value
+    _currentUser = FirebaseAuth.instance.currentUser;
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -27,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ✅ Bottom Nav Icon + Dot
   Widget _buildNavIcon(IconData icon, int index) {
     final bool isSelected = _selectedIndex == index;
     return Column(
@@ -70,7 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ),
-
         title: Text(
           "Laptop Harbor",
           style: GoogleFonts.orbitron(
@@ -79,9 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
             fontSize: 20,
           ),
         ),
-
         centerTitle: true,
-
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 4),
@@ -95,7 +109,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: const Icon(Icons.search, color: AppColors.dark),
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: Container(
@@ -172,14 +185,18 @@ class _HomeScreenState extends State<HomeScreen> {
                             "assets/images/profile.png",
                           ),
                         ),
-                        title: const Text(
-                          "User",
-                          style: TextStyle(
+                        title: Text(
+                          _currentUser?.email ?? "Guest User",
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
                         ),
-                        subtitle: const Text("Product/UI Designer"),
+                        subtitle: Text(
+                          _currentUser != null
+                              ? "Logged in"
+                              : "Product/UI Designer",
+                        ),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
                           Navigator.pushNamed(context, "/profile");
@@ -194,7 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // ⚙️ Settings Options
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -232,7 +248,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 20),
 
-                    // ℹ️ About & Help
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -258,44 +273,63 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // 🚪 Logout & Deactivate
+              // 🚪 Login / Signup OR Logout (STATE-based, not StreamBuilder)
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const ListTile(
-                        leading: Icon(Icons.delete_forever, color: Colors.red),
-                        title: Text(
-                          "Deactivate my account",
-                          style: TextStyle(color: Colors.red),
+                child: _currentUser == null
+                    ? Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.login),
+                              label: const Text("Login"),
+                              onPressed: () async {
+                                final result = await Navigator.push<User?>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginScreen(),
+                                  ),
+                                );
+                                if (result != null) {
+                                  Navigator.pop(context);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.app_registration),
+                              label: const Text("Signup"),
+                              onPressed: () async {
+                                final result = await Navigator.push<User?>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const SignupScreen(),
+                                  ),
+                                );
+                                if (result != null) {
+                                  Navigator.pop(context);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      )
+                    : SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.logout),
+                          label: const Text("Logout"),
+                          onPressed: () async {
+                            await FirebaseAuth.instance.signOut();
+                          },
                         ),
-                        trailing: Icon(Icons.chevron_right, color: Colors.red),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const ListTile(
-                        leading: Icon(Icons.logout, color: Colors.red),
-                        title: Text(
-                          "Logout",
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        trailing: Icon(Icons.chevron_right, color: Colors.red),
-                      ),
-                    ),
-                  ],
-                ),
               ),
-              const Text("Laptop Harbor"),
+
               const SizedBox(height: 20),
             ],
           ),

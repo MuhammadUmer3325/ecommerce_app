@@ -1,4 +1,6 @@
+// ... baki imports
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:laptop_harbor/screens/auth/forget_password_screen.dart';
 import 'package:laptop_harbor/screens/auth/signup_screen.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
@@ -16,6 +18,68 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool isLoading = false;
+  bool _obscurePassword = true; // 🔑 Toggle flag for password visibility
+
+  Future<void> loginUser() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+
+      User? user = _auth.currentUser;
+
+      if (user != null && user.emailVerified) {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
+      } else {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("Email not verified"),
+            content: Text(
+              "Please verify your email first. Check your inbox at ${user?.email}.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = '';
+      if (e.code == 'user-not-found') {
+        message = 'No user found for that email.';
+      } else if (e.code == 'wrong-password') {
+        message = 'Wrong password provided.';
+      } else {
+        message = e.message ?? 'An error occurred.';
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -24,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: Stack(
         children: [
-          // ===================== HALF ROUND BACKGROUND SHAPE =====================
+          // Background shape
           Positioned(
             bottom: 0,
             left: 0,
@@ -35,19 +99,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 topRight: Radius.circular(1000.0),
               ),
               child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: 20,
-                  sigmaY: 20,
-                ), // 👈 strong blur
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Container(
                   height: screenHeight * 0.4,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.white.withOpacity(0.25), // upar light glass
-                        Colors.white.withOpacity(
-                          0.05,
-                        ), // neeche darker transparent
+                        Colors.white.withOpacity(0.25),
+                        Colors.white.withOpacity(0.05),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -57,14 +116,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       topRight: Radius.circular(1000.0),
                     ),
                     border: Border.all(
-                      color: Colors.white.withOpacity(
-                        0.3,
-                      ), // 👈 subtle glass border
+                      color: Colors.white.withOpacity(0.3),
                       width: 1.2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1), // depth ke liye
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -75,26 +132,44 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          // ===================== LOGIN CONTENT =====================
+          // Login content
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 children: [
-                  // 👆 Expanded se upar wala content center hoga
+                  // 🔙 Back Button
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.dark,
+                        border: Border.all(color: AppColors.hint, width: 1),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HomeScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // ✅ App Logo / Icon
                         Icon(
                           Icons.shopping_bag,
                           size: 80,
                           color: AppColors.dark,
                         ),
                         const SizedBox(height: 20),
-
-                        // ✅ Title
                         Text(
                           "Welcome Back!",
                           style: TextStyle(
@@ -112,10 +187,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         const SizedBox(height: 40),
 
-                        // ✅ Email Field
+                        // Email field
                         TextField(
                           controller: emailController,
                           style: const TextStyle(color: Colors.white),
@@ -140,13 +214,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 16),
 
-                        // ✅ Password Field
+                        // Password field with show/hide
                         TextField(
                           controller: passwordController,
-                          obscureText: true,
+                          obscureText: _obscurePassword,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: "Password",
@@ -167,12 +240,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: AppColors.light,
                               ),
                             ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: AppColors.light,
+                              ),
+                              padding: const EdgeInsets.only(
+                                left: 5,
+                                right: 20,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
                           ),
                         ),
-
                         const SizedBox(height: 10),
 
-                        // ✅ Forgot Password
+                        // Forgot password
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
@@ -180,8 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ForgetPasswordScreen(),
+                                  builder: (_) => const ForgetPasswordScreen(),
                                 ),
                               );
                             },
@@ -199,63 +287,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  // ===================== BUTTON + SIGN UP BOTTOM =====================
+                  // Login button + signup
                   Column(
                     children: [
                       SizedBox(
-                        width: 370, // 👈 jitni chahiye utni width set karo
+                        width: 370,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const HomeScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text("Login"),
+                          onPressed: isLoading ? null : loginUser,
+                          child: isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text("Login"),
                         ),
                       ),
-
                       const SizedBox(height: 30),
 
-                      // ==================== GOOGLE BUTTON ====================
-                      SizedBox(
-                        width: 370,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.transparent, // 👈 remove background
-                            foregroundColor:
-                                AppColors.dark, // 👈 text & icon color
-                            side: const BorderSide(
-                              color: AppColors.dark, // 👈 border color
-                              width: 1, // 👈 border thickness
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                30,
-                              ), // 👈 rounded edges
-                            ),
-                            elevation: 0, // 👈 no shadow
-                          ),
-                          onPressed: () {},
-                          icon: Image.asset(
-                            "assets/images/google_logo.png",
-                            height: 24,
-                            width: 24,
-                          ),
-                          label: const Text(
-                            "Google",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // ==================== Sign Up Redirect ====================
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -268,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const SignupScreen(),
+                                  builder: (_) => const SignupScreen(),
                                 ),
                               );
                             },
@@ -282,9 +329,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(
-                        height: 70,
-                      ), // 👈 yeh neeche thoda aur space dega
+                      const SizedBox(height: 70),
                     ],
                   ),
                 ],

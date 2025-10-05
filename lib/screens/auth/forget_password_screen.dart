@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:laptop_harbor/screens/auth/login_screen.dart';
-import 'package:laptop_harbor/screens/auth/reset_password_screen.dart';
 import '../../core/constants/app_constants.dart';
 import 'dart:ui';
 
@@ -13,6 +13,41 @@ class ForgetPasswordScreen extends StatefulWidget {
 
 class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
   final TextEditingController emailController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool isLoading = false;
+
+  void _sendResetEmail() async {
+    final email = emailController.text.trim();
+    if (email.isEmpty) {
+      _showSnackBar("Please enter your email");
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      _showSnackBar("Password reset link sent! Check your email.");
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      _showSnackBar(e.message ?? "An error occurred");
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,15 +111,12 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // ✅ App Logo
                         Icon(
                           Icons.shopping_bag,
                           size: 80,
                           color: AppColors.dark,
                         ),
                         const SizedBox(height: 20),
-
-                        // ✅ Title
                         Text(
                           "Forgot Password?",
                           style: TextStyle(
@@ -103,10 +135,9 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-
                         const SizedBox(height: 40),
 
-                        // ✅ Email Field
+                        // ===================== EMAIL FIELD =====================
                         TextField(
                           controller: emailController,
                           style: const TextStyle(color: Colors.white),
@@ -138,23 +169,16 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                       SizedBox(
                         width: 370,
                         child: ElevatedButton(
-                          onPressed: () {
-                            // TODO: add actual reset password logic
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const ResetPasswordScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text("Reset Password"),
+                          onPressed: isLoading ? null : _sendResetEmail,
+                          child: isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text("Send Reset Link"),
                         ),
                       ),
-
                       const SizedBox(height: 30),
 
-                      // ==================== Back to Login ====================
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

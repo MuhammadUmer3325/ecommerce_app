@@ -67,13 +67,15 @@ class OnboardingScreen extends StatelessWidget {
               ),
             ),
           ),
+
+          // ===================== MAIN CONTENT =====================
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 50),
+                  const SizedBox(height: 100),
 
                   // ===================== LOTTIE ANIMATION =====================
                   Lottie.asset(
@@ -83,26 +85,24 @@ class OnboardingScreen extends StatelessWidget {
                     fit: BoxFit.contain,
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 5),
 
                   // ===================== TITLE =====================
                   Text(
-                    "Welcome to Laptop Harbor",
+                    "Welcome to \n Laptop Harbor",
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.roboto(
-                      fontSize: 28,
-                      fontWeight:
-                          FontWeight.bold, // heading ke liye bold hi rakh
+                    style: GoogleFonts.orbitron(
+                      letterSpacing: 1,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
                       color: AppColors.main,
-                      letterSpacing:
-                          0.5, // thoda spacing headings ko aur clean banati hai
-                      shadows: const [
-                        Shadow(
-                          offset: Offset(0, 1), // sirf neeche halka sa
-                          blurRadius: 3, // halka blur, soft look
-                          color: Colors.black26, // light grey shadow
-                        ),
-                      ],
+                      // shadows: const [
+                      //   Shadow(
+                      //     offset: Offset(0, 1),
+                      //     blurRadius: 3,
+                      //     color: Colors.black26,
+                      //   ),
+                      // ],
                     ),
                   ),
 
@@ -110,7 +110,7 @@ class OnboardingScreen extends StatelessWidget {
 
                   // ===================== SUBTITLE =====================
                   Text(
-                    "Upgrade your tech game the latest laptops and gadgets at unbeatable prices!",
+                    "Upgrade your tech game with the latest laptops and gadgets at unbeatable prices!",
                     textAlign: TextAlign.center,
                     style: GoogleFonts.roboto(
                       fontSize: 16,
@@ -141,7 +141,7 @@ class OnboardingScreen extends StatelessWidget {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const LoginScreen(),
+                          builder: (context) => const HomeScreen(),
                         ),
                       );
                     },

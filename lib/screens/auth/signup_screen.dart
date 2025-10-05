@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:laptop_harbor/screens/auth/login_screen.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
 import '../../core/constants/app_constants.dart';
@@ -18,6 +19,76 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController confirmPasswordController =
       TextEditingController();
 
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isLoading = false;
+  bool _obscurePassword = true; // 🔑 Toggle password
+  bool _obscureConfirmPassword = true; // 🔑 Toggle confirm password
+
+  void _signup() async {
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+    final confirmPassword = confirmPasswordController.text.trim();
+
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      _showSnackBar("Please fill all fields");
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showSnackBar("Passwords do not match");
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      await userCredential.user?.updateDisplayName(name);
+      await userCredential.user?.sendEmailVerification();
+
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("Verify your email"),
+          content: Text(
+            "A verification email has been sent to $email. Please verify your email to login.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              },
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      _showSnackBar(e.message ?? "Signup failed");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -26,7 +97,7 @@ class _SignupScreenState extends State<SignupScreen> {
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: Stack(
         children: [
-          // ===================== HALF ROUND BACKGROUND SHAPE =====================
+          // Background Shape
           Positioned(
             bottom: 0,
             left: 0,
@@ -70,25 +141,45 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           ),
 
-          // ===================== SIGNUP CONTENT =====================
+          // Signup Content
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 children: [
+                  // 🔙 Back Button
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.dark,
+                        border: Border.all(color: AppColors.hint, width: 1),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HomeScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
                   Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // ✅ App Logo / Icon
                         Icon(
                           Icons.shopping_bag,
                           size: 80,
                           color: AppColors.dark,
                         ),
                         const SizedBox(height: 20),
-
-                        // ✅ Title
                         Text(
                           "Create Account",
                           style: TextStyle(
@@ -106,10 +197,9 @@ class _SignupScreenState extends State<SignupScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         const SizedBox(height: 40),
 
-                        // ✅ Full Name Field
+                        // Full Name
                         TextField(
                           controller: nameController,
                           style: const TextStyle(color: Colors.white),
@@ -133,7 +223,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // ✅ Email Field
+                        // Email
                         TextField(
                           controller: emailController,
                           style: const TextStyle(color: Colors.white),
@@ -157,10 +247,10 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // ✅ Password Field
+                        // Password with show/hide
                         TextField(
                           controller: passwordController,
-                          obscureText: true,
+                          obscureText: _obscurePassword,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: "Password",
@@ -178,14 +268,31 @@ class _SignupScreenState extends State<SignupScreen> {
                                 color: AppColors.light,
                               ),
                             ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: AppColors.light,
+                              ),
+                              padding: const EdgeInsets.only(
+                                left: 5,
+                                right: 20,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
 
-                        // ✅ Confirm Password Field
+                        // Confirm Password with show/hide
                         TextField(
                           controller: confirmPasswordController,
-                          obscureText: true,
+                          obscureText: _obscureConfirmPassword,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: "Confirm Password",
@@ -203,65 +310,46 @@ class _SignupScreenState extends State<SignupScreen> {
                                 color: AppColors.light,
                               ),
                             ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureConfirmPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: AppColors.light,
+                              ),
+                              padding: const EdgeInsets.only(
+                                left: 5,
+                                right: 20,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscureConfirmPassword =
+                                      !_obscureConfirmPassword;
+                                });
+                              },
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  // ===================== BUTTON + LOGIN REDIRECT =====================
+                  // Buttons
                   Column(
                     children: [
                       SizedBox(
                         width: 370,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const HomeScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text("Sign Up"),
+                          onPressed: _isLoading ? null : _signup,
+                          child: _isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text("Sign Up"),
                         ),
                       ),
-
                       const SizedBox(height: 30),
 
-                      // ==================== GOOGLE BUTTON ====================
-                      SizedBox(
-                        width: 370,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: AppColors.dark,
-                            side: const BorderSide(
-                              color: AppColors.dark,
-                              width: 1,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            elevation: 0,
-                          ),
-                          onPressed: () {},
-                          icon: Image.asset(
-                            "assets/images/google_logo.png",
-                            height: 24,
-                            width: 24,
-                          ),
-                          label: const Text(
-                            "Google",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // ==================== Login Redirect ====================
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

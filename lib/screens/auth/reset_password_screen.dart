@@ -1,19 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:laptop_harbor/screens/auth/login_screen.dart';
 import '../../core/constants/app_constants.dart';
 import 'dart:ui';
 
 class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({super.key});
+  final String email; // ForgetPasswordScreen se email pass hoga
+  const ResetPasswordScreen({super.key, required this.email});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  final TextEditingController newPasswordController = TextEditingController();
-  final TextEditingController confirmPasswordController =
-      TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isLoading = false;
+
+  Future<void> _sendResetEmail() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _auth.sendPasswordResetEmail(email: widget.email.trim());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Password reset email sent! Check your inbox."),
+        ),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message ?? "An error occurred")));
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +51,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: Stack(
         children: [
-          // ===================== HALF ROUND BACKGROUND SHAPE =====================
           Positioned(
             bottom: 0,
             left: 0,
@@ -66,8 +93,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               ),
             ),
           ),
-
-          // ===================== RESET PASSWORD CONTENT =====================
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -77,15 +102,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // ✅ App Logo
                         Icon(
                           Icons.shopping_bag,
                           size: 80,
                           color: AppColors.dark,
                         ),
                         const SizedBox(height: 20),
-
-                        // ✅ Title
                         Text(
                           "Reset Password",
                           style: TextStyle(
@@ -96,99 +118,32 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          "Enter your new password below",
+                          "A password reset link will be sent to your email",
                           style: TextStyle(
                             color: AppColors.bg,
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-
                         const SizedBox(height: 40),
-
-                        // ✅ New Password Field
-                        TextField(
-                          controller: newPasswordController,
-                          obscureText: true,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: "New Password",
-                            hintStyle: const TextStyle(color: Colors.white),
-                            filled: true,
-                            fillColor: AppColors.dark,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(25),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: const Padding(
-                              padding: EdgeInsets.only(left: 20, right: 12),
-                              child: Icon(
-                                Icons.lock_reset,
-                                color: AppColors.light,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // ✅ Confirm Password Field
-                        TextField(
-                          controller: confirmPasswordController,
-                          obscureText: true,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: "Confirm Password",
-                            hintStyle: const TextStyle(color: Colors.white),
-                            filled: true,
-                            fillColor: AppColors.dark,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(25),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: const Padding(
-                              padding: EdgeInsets.only(left: 20, right: 12),
-                              child: Icon(
-                                Icons.lock_outline,
-                                color: AppColors.light,
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
-
-                  // ===================== BUTTON + BACK TO LOGIN =====================
                   Column(
                     children: [
                       SizedBox(
                         width: 370,
                         child: ElevatedButton(
-                          onPressed: () {
-                            if (newPasswordController.text ==
-                                confirmPasswordController.text) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Password has been reset!"),
-                                ),
-                              );
-                              Navigator.pop(context); // back to login
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Passwords do not match!"),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          child: const Text("Save New Password"),
+                          onPressed: _isLoading ? null : _sendResetEmail,
+                          child: _isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text("Send Reset Email"),
                         ),
                       ),
-
                       const SizedBox(height: 30),
-
-                      // ==================== Back to Login ====================
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
