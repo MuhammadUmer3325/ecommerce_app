@@ -349,17 +349,20 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: AppColors.hint,
         showSelectedLabels: false,
         showUnselectedLabels: false,
-        items: [
+        items: const [
           BottomNavigationBarItem(
-            icon: _buildNavIcon(Icons.home, 0),
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
             label: "",
           ),
           BottomNavigationBarItem(
-            icon: _buildNavIcon(Icons.shopping_cart, 1),
+            icon: Icon(Icons.favorite_border),
+            activeIcon: Icon(Icons.favorite),
             label: "",
           ),
           BottomNavigationBarItem(
-            icon: _buildNavIcon(Icons.person, 2),
+            icon: Icon(Icons.shopping_cart_outlined),
+            activeIcon: Icon(Icons.shopping_cart),
             label: "",
           ),
         ],
@@ -549,7 +552,7 @@ class _HomeBody extends StatelessWidget {
             children: [
               // ----- TITLE -----
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 1, vertical: 12),
                 child: Text(
                   "Featured Brands",
                   style: TextStyle(

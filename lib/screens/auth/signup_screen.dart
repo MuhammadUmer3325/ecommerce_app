@@ -348,7 +348,44 @@ class _SignupScreenState extends State<SignupScreen> {
                               : const Text("Sign Up"),
                         ),
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 10),
+                      // ==================== GOOGLE BUTTON ====================
+                      SizedBox(
+                        width: 370,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Colors.transparent, // 👈 remove background
+                            foregroundColor:
+                                AppColors.dark, // 👈 text & icon color
+                            side: const BorderSide(
+                              color: AppColors.dark, // 👈 border color
+                              width: 1, // 👈 border thickness
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                30,
+                              ), // 👈 rounded edges
+                            ),
+                            elevation: 0, // 👈 no shadow
+                          ),
+                          onPressed: () {},
+                          icon: Image.asset(
+                            "assets/images/google_logo.png",
+                            height: 24,
+                            width: 24,
+                          ),
+                          label: const Text(
+                            "Google",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
