@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:laptop_harbor/admin/screens/orders_screen.dart';
 import 'package:laptop_harbor/admin/screens/products_screen.dart';
+import 'package:laptop_harbor/admin/screens/users_screen.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -75,25 +77,80 @@ class DashboardScreen extends StatelessWidget {
 
   // ======================= Stats Cards =======================
   Widget _buildStatsCards(BuildContext context) {
-    final List<Map<String, dynamic>> stats = [
-      {'title': 'Products', 'count': 120, 'icon': Icons.shopping_bag},
-      {'title': 'Orders', 'count': 340, 'icon': Icons.receipt_long},
-      {'title': 'Users', 'count': 89, 'icon': Icons.people},
-      {'title': 'Revenue', 'count': 24500, 'icon': Icons.attach_money},
-    ];
+    return StreamBuilder<List<int>>(
+      stream: _fetchCounts(),
+      builder: (context, snapshot) {
+        int productsCount = 0;
+        int usersCount = 0;
+        int ordersCount = 0;
+        int revenue = 0;
 
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: stats.map((item) {
-        return _buildStatCard(
-          item['title'],
-          item['count'].toString(),
-          item['icon'],
-          context,
+        if (snapshot.hasData) {
+          productsCount = snapshot.data![0];
+          usersCount = snapshot.data![1];
+          ordersCount = snapshot.data![2];
+          revenue = snapshot.data![3];
+        }
+
+        final List<Map<String, dynamic>> stats = [
+          {
+            'title': 'Products',
+            'count': productsCount,
+            'icon': Icons.shopping_bag,
+          },
+          {'title': 'Orders', 'count': ordersCount, 'icon': Icons.receipt_long},
+          {'title': 'Users', 'count': usersCount, 'icon': Icons.people},
+          {'title': 'Revenue', 'count': revenue, 'icon': Icons.attach_money},
+        ];
+
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: stats.map((item) {
+            return _buildStatCard(
+              item['title'],
+              item['count'].toString(),
+              item['icon'],
+              context,
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
+  }
+
+  Stream<List<int>> _fetchCounts() async* {
+    final productsSnapshot = FirebaseFirestore.instance
+        .collection('products')
+        .snapshots();
+    final usersSnapshot = FirebaseFirestore.instance
+        .collection('users')
+        .snapshots();
+    final ordersSnapshot = FirebaseFirestore.instance
+        .collection('orders')
+        .snapshots();
+
+    await for (final _ in Stream.periodic(const Duration(seconds: 1))) {
+      final products = await FirebaseFirestore.instance
+          .collection('products')
+          .get();
+      final users = await FirebaseFirestore.instance.collection('users').get();
+      final orders = await FirebaseFirestore.instance
+          .collection('orders')
+          .get();
+
+      int totalRevenue = 0;
+      for (var order in orders.docs) {
+        totalRevenue += int.tryParse(order['amount'].toString()) ?? 0;
+      }
+
+      yield [
+        products.docs.length,
+        users.docs.length,
+        orders.docs.length,
+        totalRevenue,
+      ];
+    }
   }
 
   Widget _buildStatCard(
@@ -154,119 +211,121 @@ class DashboardScreen extends StatelessWidget {
 
   // ======================= Recent Orders Table =======================
   Widget _buildRecentOrdersTable(BuildContext context) {
-    final List<Map<String, dynamic>> orders = [
-      {
-        'id': '#1001',
-        'customer': 'Ali',
-        'status': 'Completed',
-        'amount': '1200',
-      },
-      {'id': '#1002', 'customer': 'Sara', 'status': 'Pending', 'amount': '800'},
-      {
-        'id': '#1003',
-        'customer': 'Bilal',
-        'status': 'Cancelled',
-        'amount': '500',
-      },
-    ];
+    final ordersRef = FirebaseFirestore.instance.collection('orders');
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.dark,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Recent Orders',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.light,
-              fontFamily: AppFonts.primaryFont,
-            ),
+    return StreamBuilder<QuerySnapshot>(
+      stream: ordersRef
+          .orderBy('createdAt', descending: true)
+          .limit(5)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
+
+        final orders = snapshot.data!.docs;
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.dark,
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingTextStyle: const TextStyle(
-                color: AppColors.light,
-                fontWeight: FontWeight.bold,
-                fontFamily: AppFonts.primaryFont,
-              ),
-              columns: const [
-                DataColumn(label: Text('Order ID')),
-                DataColumn(label: Text('Customer')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Amount')),
-              ],
-              rows: orders.map((order) {
-                return DataRow(
-                  cells: [
-                    DataCell(
-                      Text(
-                        order['id'],
-                        style: const TextStyle(color: AppColors.light),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        order['customer'],
-                        style: const TextStyle(color: AppColors.light),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        order['status'],
-                        style: const TextStyle(color: AppColors.light),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        order['amount'],
-                        style: const TextStyle(color: AppColors.light),
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const OrdersScreen()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.main,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 25,
-                  vertical: 20,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                elevation: 6,
-                shadowColor: Colors.black38,
-                textStyle: const TextStyle(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Recent Orders',
+                style: TextStyle(
                   fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.light,
                   fontFamily: AppFonts.primaryFont,
                 ),
               ),
-              child: const Text('View All Orders'),
-            ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  headingTextStyle: const TextStyle(
+                    color: AppColors.light,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: AppFonts.primaryFont,
+                  ),
+                  columns: const [
+                    DataColumn(label: Text('Order ID')),
+                    DataColumn(label: Text('Customer')),
+                    DataColumn(label: Text('Status')),
+                    DataColumn(label: Text('Amount')),
+                  ],
+                  rows: orders.map((order) {
+                    final data = order.data() as Map<String, dynamic>;
+                    return DataRow(
+                      cells: [
+                        DataCell(
+                          Text(
+                            data['id'] ?? '',
+                            style: const TextStyle(color: AppColors.light),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            data['customer'] ?? '',
+                            style: const TextStyle(color: AppColors.light),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            data['status'] ?? '',
+                            style: const TextStyle(color: AppColors.light),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            data['amount']?.toString() ?? '',
+                            style: const TextStyle(color: AppColors.light),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const OrdersScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.main,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 25,
+                      vertical: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 6,
+                    shadowColor: Colors.black38,
+                    textStyle: const TextStyle(
+                      fontSize: 18,
+                      fontFamily: AppFonts.primaryFont,
+                    ),
+                  ),
+                  child: const Text('View All Orders'),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -278,7 +337,6 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
     child: SafeArea(
       child: Column(
         children: [
-          // 🔙 Back + Title
           Padding(
             padding: const EdgeInsets.only(top: 16, left: 16),
             child: Row(
@@ -310,10 +368,7 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
               ],
             ),
           ),
-
           const SizedBox(height: 20),
-
-          // 👤 Admin Profile
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -336,16 +391,10 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
                 ),
                 subtitle: const Text("Administrator"),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // Optional: Profile or Admin Settings Page
-                },
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
-          // 📋 Admin Menu
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(16),
@@ -392,7 +441,12 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
                       ),
                       const Divider(height: 1),
                       _adminDrawerItem(Icons.people_outline, "Users", () {
-                        // Users Logic
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const UsersScreen(),
+                          ),
+                        );
                       }),
                       const Divider(height: 1),
                       _adminDrawerItem(Icons.settings_outlined, "Settings", () {
@@ -404,8 +458,6 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
               ],
             ),
           ),
-
-          // 🚪 Logout Button
           Padding(
             padding: const EdgeInsets.all(16),
             child: SizedBox(
@@ -426,7 +478,6 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
         ],
       ),
@@ -434,7 +485,6 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
   );
 }
 
-// ✅ Reusable Drawer Item
 Widget _adminDrawerItem(IconData icon, String title, VoidCallback onTap) {
   return ListTile(
     leading: Icon(icon),

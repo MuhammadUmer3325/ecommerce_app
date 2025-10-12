@@ -1,8 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../../core/constants/app_constants.dart';
-import 'dashboard_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -12,408 +10,357 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
-  String _selectedStatus = 'All';
-  String _sortBy = 'Date';
-  final TextEditingController _searchController = TextEditingController();
-  DateTimeRange? _selectedDateRange;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  final List<Map<String, dynamic>> _orders = [
-    {
-      'id': '#1001',
-      'customer': 'Ali',
-      'status': 'Completed',
-      'amount': 1200,
-      'date': DateTime(2025, 10, 7),
-    },
-    {
-      'id': '#1002',
-      'customer': 'Sara',
-      'status': 'Pending',
-      'amount': 800,
-      'date': DateTime(2025, 10, 6),
-    },
-    {
-      'id': '#1003',
-      'customer': 'Bilal',
-      'status': 'Cancelled',
-      'amount': 500,
-      'date': DateTime(2025, 10, 5),
-    },
-  ];
+  // ================== ADD / EDIT ORDER FORM ==================
+  void _openOrderDialog({DocumentSnapshot? existingOrder}) {
+    final nameController = TextEditingController(
+      text: existingOrder != null ? existingOrder['userName'] : '',
+    );
+    final emailController = TextEditingController(
+      text: existingOrder != null ? existingOrder['userEmail'] : '',
+    );
 
+    // Product Selection Variables
+    String? selectedProductId;
+    String? selectedProductName;
+    double? selectedProductPrice;
+    final qtyController = TextEditingController();
+
+    // Product List
+    List<Map<String, dynamic>> productList = existingOrder != null
+        ? List<Map<String, dynamic>>.from(existingOrder['products'])
+        : [];
+
+    void addProduct() {
+      if (selectedProductId != null &&
+          qtyController.text.isNotEmpty &&
+          selectedProductPrice != null) {
+        setState(() {
+          productList.add({
+            'productId': selectedProductId,
+            'name': selectedProductName,
+            'quantity': int.parse(qtyController.text.trim()),
+            'price': selectedProductPrice,
+          });
+        });
+        selectedProductId = null;
+        selectedProductName = null;
+        selectedProductPrice = null;
+        qtyController.clear();
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: Text(
+                existingOrder != null ? 'Edit Order' : 'Create Order',
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: _inputDecoration('Customer Name'),
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: emailController,
+                      decoration: _inputDecoration('Customer Email'),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ===== Product Dropdown + Quantity =====
+                    StreamBuilder<QuerySnapshot>(
+                      stream: _firestore.collection('products').snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const CircularProgressIndicator();
+                        }
+                        final products = snapshot.data!.docs;
+                        return DropdownButtonFormField<String>(
+                          value: selectedProductId,
+                          decoration: _inputDecoration('Select Product'),
+                          items: products.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            return DropdownMenuItem(
+                              value: doc.id,
+                              child: Text(data['name']),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            setModalState(() {
+                              selectedProductId = val;
+                              final doc = products.firstWhere(
+                                (element) => element.id == val,
+                              );
+                              final data = doc.data() as Map<String, dynamic>;
+                              selectedProductName = data['name'];
+                              selectedProductPrice =
+                                  double.tryParse(data['price'].toString()) ??
+                                  0.0;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: qtyController,
+                      decoration: _inputDecoration('Quantity'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 10),
+                    if (selectedProductPrice != null)
+                      Text(
+                        "Price: Rs ${selectedProductPrice!.toStringAsFixed(0)}",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setModalState(addProduct);
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Product'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.main,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    // ===== Product List =====
+                    if (productList.isEmpty)
+                      const Text(
+                        'No products added yet',
+                        style: TextStyle(color: Colors.grey),
+                      )
+                    else
+                      Column(
+                        children: productList.map((p) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: ListTile(
+                              title: Text("${p['name']} x${p['quantity']}"),
+                              subtitle: Text("Rs ${p['price']}"),
+                              trailing: IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () {
+                                  setModalState(() {
+                                    productList.remove(p);
+                                  });
+                                },
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final total = productList.fold<double>(
+                      0,
+                      (sum, item) =>
+                          sum + (item['price'] as double) * item['quantity'],
+                    );
+                    final orderData = {
+                      'userName': nameController.text.trim(),
+                      'userEmail': emailController.text.trim(),
+                      'products': productList,
+                      'totalAmount': total,
+                      'status': 'Pending',
+                      'createdAt':
+                          existingOrder?['createdAt'] ?? Timestamp.now(),
+                    };
+
+                    if (existingOrder == null) {
+                      await _firestore.collection('orders').add(orderData);
+                    } else {
+                      await _firestore
+                          .collection('orders')
+                          .doc(existingOrder.id)
+                          .update(orderData);
+                    }
+
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.main,
+                  ),
+                  child: Text(existingOrder != null ? 'Update' : 'Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ================== UPDATE STATUS ==================
+  void _updateStatus(String id, String status) async {
+    await _firestore.collection('orders').doc(id).update({'status': status});
+  }
+
+  // ================== DELETE ==================
+  void _deleteOrder(String id) async {
+    await _firestore.collection('orders').doc(id).delete();
+  }
+
+  // ================== BUILD UI ==================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTopBar(context),
-              const SizedBox(height: 20),
-              _buildFiltersAndSearch(),
-              const SizedBox(height: 20),
-              _buildStatsCards(),
-              const SizedBox(height: 20),
-              _buildOrdersChart(),
-              const SizedBox(height: 20),
-              _buildOrdersTable(),
-              const SizedBox(height: 20),
-              _buildPagination(),
-            ],
-          ),
-        ),
+      backgroundColor: const Color.fromARGB(255, 236, 241, 243),
+      appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        title: const Text('Orders Management'),
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.main,
-        onPressed: () {
-          // TODO: Add new order
-        },
-        child: const Icon(Icons.add, color: AppColors.light),
+        onPressed: () => _openOrderDialog(),
+        child: const Icon(Icons.add),
       ),
-    );
-  }
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestore
+            .collection('orders')
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final orders = snapshot.data!.docs;
+          if (orders.isEmpty) {
+            return const Center(child: Text('No orders found'));
+          }
 
-  // ======================= Top Bar =======================
-  Widget _buildTopBar(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const DashboardScreen()),
-            );
-          },
-          icon: const Icon(Icons.arrow_back, color: AppColors.light),
-        ),
-        const SizedBox(width: 8),
-        const Text(
-          'Orders',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            fontFamily: AppFonts.primaryFont,
-            color: AppColors.light,
-          ),
-        ),
-      ],
-    );
-  }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: orders.length,
+            itemBuilder: (context, index) {
+              final order = orders[index];
+              final products = List<Map<String, dynamic>>.from(
+                order['products'],
+              );
+              final status = order['status'];
 
-  // ======================= Search & Filters =======================
-  Widget _buildFiltersAndSearch() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Search & Filters',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.light,
-            fontFamily: AppFonts.primaryFont,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            // Search Bar
-            SizedBox(
-              width: 250,
-              child: TextField(
-                controller: _searchController,
-                style: const TextStyle(color: AppColors.light),
-                decoration: InputDecoration(
-                  hintText: 'Search by ID or Customer',
-                  hintStyle: const TextStyle(color: AppColors.hint),
-                  filled: true,
-                  fillColor: AppColors.dark,
-                  prefixIcon: const Icon(Icons.search, color: AppColors.hint),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                onChanged: (val) {
-                  setState(() {});
-                },
-              ),
-            ),
-
-            // Status Filter
-            DropdownButton<String>(
-              dropdownColor: AppColors.dark,
-              value: _selectedStatus,
-              items: ['All', 'Pending', 'Completed', 'Cancelled']
-                  .map(
-                    (status) => DropdownMenuItem(
-                      value: status,
-                      child: Text(
-                        status,
-                        style: const TextStyle(color: AppColors.light),
-                      ),
+                child: ExpansionTile(
+                  title: Text("${order['userName']} (${order['userEmail']})"),
+                  subtitle: Text("Total: Rs ${order['totalAmount']}"),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
                     ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                setState(() => _selectedStatus = value!);
-              },
-            ),
-
-            // Sort By
-            DropdownButton<String>(
-              dropdownColor: AppColors.dark,
-              value: _sortBy,
-              items: ['Date', 'Amount']
-                  .map(
-                    (sort) => DropdownMenuItem(
-                      value: sort,
-                      child: Text(
-                        'Sort by $sort',
-                        style: const TextStyle(color: AppColors.light),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                setState(() => _sortBy = value!);
-              },
-            ),
-
-            // Date Range Picker
-            ElevatedButton(
-              onPressed: () async {
-                final DateTimeRange? picked = await showDateRangePicker(
-                  context: context,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2030),
-                  initialDateRange: _selectedDateRange,
-                );
-                if (picked != null) {
-                  setState(() => _selectedDateRange = picked);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.dark,
-                foregroundColor: AppColors.light,
-              ),
-              child: const Text('Select Date Range'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ======================= Stats Cards =======================
-  Widget _buildStatsCards() {
-    final revenue = _orders.fold<int>(
-      0,
-      (sum, o) => sum + (int.tryParse(o['amount'].toString()) ?? 0),
-    );
-
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _buildStatCard('Total Orders', _orders.length.toString(), Colors.blue),
-        _buildStatCard(
-          'Completed',
-          _orders.where((o) => o['status'] == 'Completed').length.toString(),
-          Colors.green,
-        ),
-        _buildStatCard(
-          'Pending',
-          _orders.where((o) => o['status'] == 'Pending').length.toString(),
-          Colors.orange,
-        ),
-        _buildStatCard('Revenue', 'PKR $revenue', Colors.purple),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, Color color) {
-    return Container(
-      width: 160,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.dark,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.light,
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ======================= Chart =======================
-  Widget _buildOrdersChart() {
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.dark,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: LineChart(
-        LineChartData(
-          gridData: const FlGridData(show: false),
-          titlesData: const FlTitlesData(show: true),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: const [
-                FlSpot(0, 3),
-                FlSpot(1, 5),
-                FlSpot(2, 2),
-                FlSpot(3, 4),
-                FlSpot(4, 6),
-              ],
-              isCurved: true,
-              color: Colors.greenAccent,
-              barWidth: 3,
-              dotData: const FlDotData(show: true),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ======================= Orders Table =======================
-  Widget _buildOrdersTable() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.dark,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingTextStyle: const TextStyle(
-            color: AppColors.light,
-            fontWeight: FontWeight.bold,
-            fontFamily: AppFonts.primaryFont,
-          ),
-          columns: const [
-            DataColumn(label: Text('Order ID')),
-            DataColumn(label: Text('Customer')),
-            DataColumn(label: Text('Date')),
-            DataColumn(label: Text('Status')),
-            DataColumn(label: Text('Amount')),
-            DataColumn(label: Text('Actions')),
-          ],
-          rows: _orders.map((order) {
-            return DataRow(
-              cells: [
-                DataCell(
-                  Text(
-                    order['id'],
-                    style: const TextStyle(color: AppColors.light),
-                  ),
-                ),
-                DataCell(
-                  Text(
-                    order['customer'],
-                    style: const TextStyle(color: AppColors.light),
-                  ),
-                ),
-                DataCell(
-                  Text(
-                    DateFormat('yyyy-MM-dd').format(order['date']),
-                    style: const TextStyle(color: AppColors.light),
-                  ),
-                ),
-                DataCell(
-                  Text(
-                    order['status'],
-                    style: TextStyle(
-                      color: order['status'] == 'Completed'
+                    decoration: BoxDecoration(
+                      color: status == 'Completed'
                           ? Colors.green
-                          : order['status'] == 'Pending'
+                          : status == 'Pending'
                           ? Colors.orange
                           : Colors.red,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      status,
+                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
-                ),
-                DataCell(
-                  Text(
-                    order['amount'].toString(),
-                    style: const TextStyle(color: AppColors.light),
-                  ),
-                ),
-                DataCell(
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () {},
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Products:",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          ...products.map(
+                            (p) => Text(
+                              "${p['name']} x${p['quantity']} - Rs ${p['price']}",
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              DropdownButton<String>(
+                                value: status,
+                                items: ['Pending', 'Completed', 'Cancelled']
+                                    .map(
+                                      (s) => DropdownMenuItem(
+                                        value: s,
+                                        child: Text(s),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null) _updateStatus(order.id, val);
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Colors.blue,
+                                ),
+                                onPressed: () =>
+                                    _openOrderDialog(existingOrder: order),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () => _deleteOrder(order.id),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          }).toList(),
-        ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 
-  // ======================= Pagination =======================
-  Widget _buildPagination() {
-    return Center(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.dark,
-              foregroundColor: AppColors.light,
-            ),
-            child: const Text('Previous'),
-          ),
-          const SizedBox(width: 10),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.dark,
-              foregroundColor: AppColors.light,
-            ),
-            child: const Text('Next'),
-          ),
-        ],
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: AppColors.main, width: 2),
+        borderRadius: BorderRadius.circular(12),
       ),
     );
   }
