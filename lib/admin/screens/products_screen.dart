@@ -19,6 +19,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
   final TextEditingController imageUrlController = TextEditingController();
 
   String? editingDocId;
+  String? selectedCategory;
+  String? filterCategory; // 👈 Category filter ke liye
+
+  final List<String> categories = ['Gaming', 'Business', 'Student', 'Budget'];
 
   void _openProductForm({DocumentSnapshot? product}) {
     if (product != null) {
@@ -27,12 +31,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
       priceController.text = product['price']?.toString() ?? '';
       descriptionController.text = product['description'] ?? '';
       imageUrlController.text = product['imageUrl'] ?? '';
+      selectedCategory = product['category'];
     } else {
       editingDocId = null;
       nameController.clear();
       priceController.clear();
       descriptionController.clear();
       imageUrlController.clear();
+      selectedCategory = null;
     }
 
     showDialog(
@@ -57,6 +63,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 _buildTextField(descriptionController, "Description"),
                 const SizedBox(height: 12),
                 _buildTextField(imageUrlController, "Image URL"),
+                const SizedBox(height: 12),
+                _buildCategoryDropdown(),
               ],
             ),
           ),
@@ -74,12 +82,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
               ),
             ),
             onPressed: () async {
-              if (_formKey.currentState!.validate()) {
+              if (_formKey.currentState!.validate() &&
+                  selectedCategory != null) {
                 final productData = {
-                  'name': nameController.text,
+                  'name': nameController.text.trim(),
                   'price': double.parse(priceController.text),
-                  'description': descriptionController.text,
+                  'description': descriptionController.text.trim(),
                   'imageUrl': imageUrlController.text.trim(),
+                  'category': selectedCategory!,
                 };
 
                 if (editingDocId != null) {
@@ -118,110 +128,218 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
+  Widget _buildCategoryDropdown() {
+    return DropdownButtonFormField<String>(
+      value: selectedCategory,
+      onChanged: (value) {
+        setState(() {
+          selectedCategory = value;
+        });
+      },
+      validator: (value) => value == null ? "Select a category" : null,
+      items: categories
+          .map(
+            (category) =>
+                DropdownMenuItem(value: category, child: Text(category)),
+          )
+          .toList(),
+      decoration: InputDecoration(
+        labelText: "Category",
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   void _deleteProduct(String docId) async {
     await _firestore.collection('products').doc(docId).delete();
   }
 
   @override
   Widget build(BuildContext context) {
+    // 👇 Query set according to filter
+    Query productsQuery = _firestore.collection('products');
+    if (filterCategory != null && filterCategory!.isNotEmpty) {
+      productsQuery = productsQuery.where(
+        'category',
+        isEqualTo: filterCategory,
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 244, 247, 250),
       appBar: AppBar(
         title: const Text("Products Management"),
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        backgroundColor: Colors.white,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('products').snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData)
-            return const Center(child: CircularProgressIndicator());
-
-          final products = snapshot.data!.docs;
-
-          if (products.isEmpty) {
-            return const Center(
-              child: Text(
-                "No products added yet",
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: products.length,
-            itemBuilder: (context, index) {
-              final product = products[index];
-              final imageUrl =
-                  (product.data() as Map<String, dynamic>)['imageUrl'] ?? '';
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 3,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  leading: imageUrl.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            imageUrl,
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 60,
-                                height: 60,
-                                color: Colors.grey[300],
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.white,
-                                ),
-                              );
-                            },
-                          ),
-                        )
-                      : Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.image, color: Colors.white),
-                        ),
-                  title: Text(
-                    product['name'] ?? '',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+      body: Column(
+        children: [
+          // ================= FILTER SECTION =================
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: filterCategory == null
+                        ? AppColors.main
+                        : Colors.grey[300],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  subtitle: Text("\$${product['price'] ?? '0'}"),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => _openProductForm(product: product),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _deleteProduct(product.id),
-                      ),
-                    ],
+                  onPressed: () {
+                    setState(() {
+                      filterCategory = null;
+                    });
+                  },
+                  child: Text(
+                    "All",
+                    style: TextStyle(
+                      color: filterCategory == null
+                          ? Colors.white
+                          : Colors.black87,
+                    ),
                   ),
                 ),
-              );
-            },
-          );
-        },
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: filterCategory,
+                    onChanged: (value) {
+                      setState(() {
+                        filterCategory = value;
+                      });
+                    },
+                    items: categories
+                        .map(
+                          (cat) =>
+                              DropdownMenuItem(value: cat, child: Text(cat)),
+                        )
+                        .toList(),
+                    decoration: InputDecoration(
+                      labelText: "Select Category",
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ================= PRODUCT LIST =================
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: productsQuery.snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final products = snapshot.data!.docs;
+
+                if (products.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No products found",
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final product = products[index];
+                    final data = product.data() as Map<String, dynamic>;
+                    final imageUrl = data['imageUrl'] ?? '';
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 3,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        leading: imageUrl.isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  imageUrl,
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 60,
+                                      height: 60,
+                                      color: Colors.grey[300],
+                                      child: const Icon(
+                                        Icons.broken_image,
+                                        color: Colors.white,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              )
+                            : Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.image,
+                                  color: Colors.white,
+                                ),
+                              ),
+                        title: Text(
+                          data['name'] ?? '',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        subtitle: Text(
+                          "${data['category'] ?? 'Uncategorized'} • \$${data['price'] ?? '0'}",
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () =>
+                                  _openProductForm(product: product),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteProduct(product.id),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.main,

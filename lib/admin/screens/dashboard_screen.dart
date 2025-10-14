@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart'; // 👈 for combineLatest
 import 'package:laptop_harbor/admin/screens/orders_screen.dart';
 import 'package:laptop_harbor/admin/screens/products_screen.dart';
 import 'package:laptop_harbor/admin/screens/users_screen.dart';
@@ -15,15 +16,8 @@ class DashboardScreen extends StatelessWidget {
     final adminUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(context), // 🧠 context added here
       drawer: buildAdminDrawer(context, adminUser),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.main,
-        onPressed: () {
-          // TODO: Add new product or any admin action
-        },
-        child: const Icon(Icons.add, color: AppColors.light),
-      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -41,7 +35,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   // ======================= AppBar =======================
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       title: const Text(
         'Admin Dashboard',
@@ -51,6 +45,17 @@ class DashboardScreen extends StatelessWidget {
         ),
       ),
       actions: [
+        // 🌀 Switch to App button
+        IconButton(
+          tooltip: 'Switch to App',
+          icon: const Icon(Icons.switch_account),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+            );
+          },
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: CircleAvatar(
@@ -78,40 +83,65 @@ class DashboardScreen extends StatelessWidget {
   // ======================= Stats Cards =======================
   Widget _buildStatsCards(BuildContext context) {
     return StreamBuilder<List<int>>(
-      stream: _fetchCounts(),
+      stream: _fetchStatsStream(),
       builder: (context, snapshot) {
-        int productsCount = 0;
-        int usersCount = 0;
-        int ordersCount = 0;
-        int revenue = 0;
+        final productsCount = snapshot.hasData ? snapshot.data![0] : 0;
+        final ordersCount = snapshot.hasData ? snapshot.data![1] : 0;
+        final usersCount = 0; // Users collection not added yet
+        final revenue = 0; // Revenue not implemented yet
 
-        if (snapshot.hasData) {
-          productsCount = snapshot.data![0];
-          usersCount = snapshot.data![1];
-          ordersCount = snapshot.data![2];
-          revenue = snapshot.data![3];
-        }
-
-        final List<Map<String, dynamic>> stats = [
+        final stats = [
           {
             'title': 'Products',
             'count': productsCount,
             'icon': Icons.shopping_bag,
+            'onTap': () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProductsScreen()),
+              );
+            },
           },
-          {'title': 'Orders', 'count': ordersCount, 'icon': Icons.receipt_long},
-          {'title': 'Users', 'count': usersCount, 'icon': Icons.people},
-          {'title': 'Revenue', 'count': revenue, 'icon': Icons.attach_money},
+          {
+            'title': 'Orders',
+            'count': ordersCount,
+            'icon': Icons.receipt_long,
+            'onTap': () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OrdersScreen()),
+              );
+            },
+          },
+          {
+            'title': 'Users',
+            'count': usersCount,
+            'icon': Icons.people,
+            'onTap': () {
+              // Future: Add UsersScreen here
+            },
+          },
+          {
+            'title': 'Revenue',
+            'count': revenue,
+            'icon': Icons.attach_money,
+            'onTap': () {},
+          },
         ];
 
         return Wrap(
           spacing: 16,
           runSpacing: 16,
           children: stats.map((item) {
-            return _buildStatCard(
-              item['title'],
-              item['count'].toString(),
-              item['icon'],
-              context,
+            return InkWell(
+              onTap: item['onTap'] as void Function()?,
+              borderRadius: BorderRadius.circular(12),
+              child: _buildStatCard(
+                item['title'] as String,
+                item['count'].toString(),
+                item['icon'] as IconData,
+                context,
+              ),
             );
           }).toList(),
         );
@@ -119,38 +149,23 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Stream<List<int>> _fetchCounts() async* {
-    final productsSnapshot = FirebaseFirestore.instance
+  /// ✅ Realtime combined stream for products & orders count using RxDart
+  Stream<List<int>> _fetchStatsStream() {
+    final productsStream = FirebaseFirestore.instance
         .collection('products')
-        .snapshots();
-    final usersSnapshot = FirebaseFirestore.instance
-        .collection('users')
-        .snapshots();
-    final ordersSnapshot = FirebaseFirestore.instance
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+
+    final ordersStream = FirebaseFirestore.instance
         .collection('orders')
-        .snapshots();
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
 
-    await for (final _ in Stream.periodic(const Duration(seconds: 1))) {
-      final products = await FirebaseFirestore.instance
-          .collection('products')
-          .get();
-      final users = await FirebaseFirestore.instance.collection('users').get();
-      final orders = await FirebaseFirestore.instance
-          .collection('orders')
-          .get();
-
-      int totalRevenue = 0;
-      for (var order in orders.docs) {
-        totalRevenue += int.tryParse(order['amount'].toString()) ?? 0;
-      }
-
-      yield [
-        products.docs.length,
-        users.docs.length,
-        orders.docs.length,
-        totalRevenue,
-      ];
-    }
+    return Rx.combineLatest2<int, int, List<int>>(
+      productsStream,
+      ordersStream,
+      (productsCount, ordersCount) => [productsCount, ordersCount],
+    );
   }
 
   Widget _buildStatCard(
@@ -219,8 +234,9 @@ class DashboardScreen extends StatelessWidget {
           .limit(5)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
 
         final orders = snapshot.data!.docs;
 
@@ -297,9 +313,7 @@ class DashboardScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const OrdersScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const OrdersScreen()),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -421,7 +435,7 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const ProductsScreen(),
+                              builder: (_) => const ProductsScreen(),
                             ),
                           );
                         },
@@ -434,24 +448,17 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const OrdersScreen(),
+                              builder: (_) => const OrdersScreen(),
                             ),
                           );
                         },
                       ),
                       const Divider(height: 1),
-                      _adminDrawerItem(Icons.people_outline, "Users", () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const UsersScreen(),
-                          ),
-                        );
-                      }),
-                      const Divider(height: 1),
-                      _adminDrawerItem(Icons.settings_outlined, "Settings", () {
-                        // Settings Logic
-                      }),
+                      _adminDrawerItem(
+                        Icons.settings_outlined,
+                        "Settings",
+                        () {},
+                      ),
                     ],
                   ),
                 ),

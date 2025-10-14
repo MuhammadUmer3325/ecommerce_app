@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:laptop_harbor/admin/screens/dashboard_screen.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
@@ -272,6 +273,30 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
+              // 👑 Only show this if the logged in user is the admin
+              if (_currentUser?.email == 'admin@laptopharbor.com') ...[
+                const SizedBox(height: 20),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.admin_panel_settings),
+                    title: const Text("Admin Panel"),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DashboardScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
 
               // 🚪 Login / Signup OR Logout (STATE-based, not StreamBuilder)
               Padding(

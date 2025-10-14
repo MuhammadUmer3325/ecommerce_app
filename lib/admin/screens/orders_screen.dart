@@ -15,23 +15,28 @@ class _OrdersScreenState extends State<OrdersScreen> {
   // ================== ADD / EDIT ORDER FORM ==================
   void _openOrderDialog({DocumentSnapshot? existingOrder}) {
     final nameController = TextEditingController(
-      text: existingOrder != null ? existingOrder['userName'] : '',
+      text: existingOrder != null ? existingOrder['userName'] ?? '' : '',
     );
     final emailController = TextEditingController(
-      text: existingOrder != null ? existingOrder['userEmail'] : '',
+      text: existingOrder != null ? existingOrder['userEmail'] ?? '' : '',
+    );
+    final addressController = TextEditingController(
+      text: existingOrder != null ? existingOrder['userAddress'] ?? '' : '',
     );
 
-    // Product Selection Variables
+    // Category & Product Selection
+    String? selectedCategory;
     String? selectedProductId;
     String? selectedProductName;
     double? selectedProductPrice;
+
     final qtyController = TextEditingController();
 
-    // Product List
     List<Map<String, dynamic>> productList = existingOrder != null
         ? List<Map<String, dynamic>>.from(existingOrder['products'])
         : [];
 
+    // Add selected product to list
     void addProduct() {
       if (selectedProductId != null &&
           qtyController.text.isNotEmpty &&
@@ -42,6 +47,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             'name': selectedProductName,
             'quantity': int.parse(qtyController.text.trim()),
             'price': selectedProductPrice,
+            'category': selectedCategory,
           });
         });
         selectedProductId = null;
@@ -62,6 +68,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
               content: SingleChildScrollView(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextFormField(
                       controller: nameController,
@@ -72,9 +79,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       controller: emailController,
                       decoration: _inputDecoration('Customer Email'),
                     ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: addressController,
+                      decoration: _inputDecoration('Customer Address'),
+                    ),
                     const SizedBox(height: 20),
 
-                    // ===== Product Dropdown + Quantity =====
+                    // ================= Category Selection =================
                     StreamBuilder<QuerySnapshot>(
                       stream: _firestore.collection('products').snapshots(),
                       builder: (context, snapshot) {
@@ -82,32 +94,83 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           return const CircularProgressIndicator();
                         }
                         final products = snapshot.data!.docs;
+                        final categories = products
+                            .map(
+                              (e) =>
+                                  (e.data()
+                                      as Map<String, dynamic>)['category'],
+                            )
+                            .toSet()
+                            .toList();
+
                         return DropdownButtonFormField<String>(
-                          value: selectedProductId,
-                          decoration: _inputDecoration('Select Product'),
-                          items: products.map((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            return DropdownMenuItem(
-                              value: doc.id,
-                              child: Text(data['name']),
+                          value: categories.contains(selectedCategory)
+                              ? selectedCategory
+                              : null,
+                          decoration: _inputDecoration('Select Category'),
+                          items: categories.map((cat) {
+                            return DropdownMenuItem<String>(
+                              value: cat,
+                              child: Text(cat),
                             );
                           }).toList(),
                           onChanged: (val) {
                             setModalState(() {
-                              selectedProductId = val;
-                              final doc = products.firstWhere(
-                                (element) => element.id == val,
-                              );
-                              final data = doc.data() as Map<String, dynamic>;
-                              selectedProductName = data['name'];
-                              selectedProductPrice =
-                                  double.tryParse(data['price'].toString()) ??
-                                  0.0;
+                              selectedCategory = val;
+                              selectedProductId = null;
                             });
+                          },
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              return 'Please select a category';
+                            }
+                            return null;
                           },
                         );
                       },
                     ),
+                    const SizedBox(height: 15),
+
+                    // ================= Product Selection =================
+                    if (selectedCategory != null)
+                      StreamBuilder<QuerySnapshot>(
+                        stream: _firestore
+                            .collection('products')
+                            .where('category', isEqualTo: selectedCategory)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const CircularProgressIndicator();
+                          }
+                          final filteredProducts = snapshot.data!.docs;
+
+                          return DropdownButtonFormField<String>(
+                            value: selectedProductId,
+                            decoration: _inputDecoration('Select Product'),
+                            items: filteredProducts.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              return DropdownMenuItem(
+                                value: doc.id,
+                                child: Text(data['name']),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setModalState(() {
+                                selectedProductId = val;
+                                final doc = filteredProducts.firstWhere(
+                                  (e) => e.id == val,
+                                );
+                                final data = doc.data() as Map<String, dynamic>;
+                                selectedProductName = data['name'];
+                                selectedProductPrice =
+                                    double.tryParse(data['price'].toString()) ??
+                                    0.0;
+                              });
+                            },
+                          );
+                        },
+                      ),
+
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: qtyController,
@@ -133,7 +196,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                     const SizedBox(height: 15),
 
-                    // ===== Product List =====
+                    // ================= Product List =================
                     if (productList.isEmpty)
                       const Text(
                         'No products added yet',
@@ -150,7 +213,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             ),
                             child: ListTile(
                               title: Text("${p['name']} x${p['quantity']}"),
-                              subtitle: Text("Rs ${p['price']}"),
+                              subtitle: Text(
+                                "Rs ${p['price']} • Category: ${p['category']}",
+                              ),
                               trailing: IconButton(
                                 icon: const Icon(
                                   Icons.delete,
@@ -184,6 +249,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     final orderData = {
                       'userName': nameController.text.trim(),
                       'userEmail': emailController.text.trim(),
+                      'userAddress': addressController.text.trim(),
                       'products': productList,
                       'totalAmount': total,
                       'status': 'Pending',
@@ -231,7 +297,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 236, 241, 243),
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        backgroundColor: Colors.white,
         title: const Text('Orders Management'),
       ),
       floatingActionButton: FloatingActionButton(
@@ -258,10 +324,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
             itemCount: orders.length,
             itemBuilder: (context, index) {
               final order = orders[index];
+              final data = order.data() as Map<String, dynamic>;
               final products = List<Map<String, dynamic>>.from(
-                order['products'],
+                data['products'],
               );
-              final status = order['status'];
+              final status = data['status'];
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -269,8 +336,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ExpansionTile(
-                  title: Text("${order['userName']} (${order['userEmail']})"),
-                  subtitle: Text("Total: Rs ${order['totalAmount']}"),
+                  title: Text("${data['userName']} (${data['userEmail']})"),
+                  subtitle: Text(
+                    "${data['userAddress']} • Rs ${data['totalAmount']}",
+                  ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -301,7 +370,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           ),
                           ...products.map(
                             (p) => Text(
-                              "${p['name']} x${p['quantity']} - Rs ${p['price']}",
+                              "${p['name']} (${p['category']}) x${p['quantity']} - Rs ${p['price']}",
                             ),
                           ),
                           const SizedBox(height: 8),
