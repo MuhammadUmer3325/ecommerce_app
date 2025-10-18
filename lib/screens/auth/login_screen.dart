@@ -1,13 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:laptop_harbor/admin/screens/dashboard_screen.dart'; // ✅ Direct dashboard import
+import 'package:laptop_harbor/admin/screens/dashboard_screen.dart';
 import 'package:laptop_harbor/screens/auth/forget_password_screen.dart';
 import 'package:laptop_harbor/screens/auth/signup_screen.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
 import '../../core/constants/app_constants.dart';
 
-const String adminEmail = 'admin@laptopharbor.com'; // 👑 Admin email
+const String adminEmail = 'admin@laptopharbor.com';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -55,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
         } else {
-          // ❌ Unverified user
+          // ❌ Unverified user → Show alert + Sign out
           await showDialog(
             context: context,
             builder: (_) => AlertDialog(
@@ -71,6 +71,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           );
+
+          await _auth.signOut(); // 🟡 ye line masla fix karti hai
         }
       }
     } on FirebaseAuthException catch (e) {
