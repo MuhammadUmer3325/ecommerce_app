@@ -34,62 +34,74 @@ class _BrandsScreenState extends State<BrandsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          brand != null ? "Edit Brand" : "Add Brand",
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Text(
+                  brand != null ? "Edit Brand" : "Add Brand",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 _buildTextField(_nameController, "Brand Name"),
                 const SizedBox(height: 12),
                 _buildTextField(_logoUrlController, "Logo URL"),
                 const SizedBox(height: 12),
                 _buildTextField(_descriptionController, "Description"),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel"),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.main,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        if (_formKey.currentState!.validate()) {
+                          final brandData = {
+                            'name': _nameController.text.trim(),
+                            'logoUrl': _logoUrlController.text.trim(),
+                            'description': _descriptionController.text.trim(),
+                          };
+
+                          if (editingDocId != null) {
+                            await _firestore
+                                .collection('brands')
+                                .doc(editingDocId)
+                                .update(brandData);
+                          } else {
+                            await _firestore
+                                .collection('brands')
+                                .add(brandData);
+                          }
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: Text(brand != null ? "Update" : "Add"),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.main,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () async {
-              if (_formKey.currentState!.validate()) {
-                final brandData = {
-                  'name': _nameController.text.trim(),
-                  'logoUrl': _logoUrlController.text.trim(),
-                  'description': _descriptionController.text.trim(),
-                };
-
-                if (editingDocId != null) {
-                  await _firestore
-                      .collection('brands')
-                      .doc(editingDocId)
-                      .update(brandData);
-                } else {
-                  await _firestore.collection('brands').add(brandData);
-                }
-                Navigator.pop(context);
-              }
-            },
-            child: Text(brand != null ? "Update" : "Add"),
-          ),
-        ],
       ),
     );
   }
@@ -101,7 +113,7 @@ class _BrandsScreenState extends State<BrandsScreen> {
       decoration: InputDecoration(
         labelText: label,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
