@@ -17,99 +17,177 @@ class _ProductsScreenState extends State<ProductsScreen> {
   final TextEditingController priceController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController imageUrlController = TextEditingController();
+  final TextEditingController stockController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   String? editingDocId;
   String? selectedCategory;
-  String? filterCategory; // 👈 Category filter ke liye
+  String? selectedBrand;
+  String? filterCategory;
+  String searchQuery = '';
+  bool _isSearchVisible = false;
 
   final List<String> categories = ['Gaming', 'Business', 'Student', 'Budget'];
 
-  void _openProductForm({DocumentSnapshot? product}) {
+  // ===================== OPEN ADD/EDIT FORM =====================
+  void _openProductForm({DocumentSnapshot? product}) async {
+    // Fetch brands from Firestore
+    List<String> brandsList = [];
+    final brandsSnapshot = await _firestore.collection('brands').get();
+    brandsList = brandsSnapshot.docs.map((e) => e['name'].toString()).toList();
+
     if (product != null) {
+      final data = product.data() as Map<String, dynamic>;
       editingDocId = product.id;
-      nameController.text = product['name'] ?? '';
-      priceController.text = product['price']?.toString() ?? '';
-      descriptionController.text = product['description'] ?? '';
-      imageUrlController.text = product['imageUrl'] ?? '';
-      selectedCategory = product['category'];
+      nameController.text = data['name'] ?? '';
+      priceController.text = data['price']?.toString() ?? '';
+      descriptionController.text = data['description'] ?? '';
+      imageUrlController.text = data['imageUrl'] ?? '';
+      stockController.text = data['stock']?.toString() ?? '0';
+      selectedCategory = data['category'];
+      selectedBrand = data['brand'];
     } else {
       editingDocId = null;
       nameController.clear();
       priceController.clear();
       descriptionController.clear();
       imageUrlController.clear();
+      stockController.clear();
       selectedCategory = null;
+      selectedBrand = null;
     }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          product != null ? "Edit Product" : "Add Product",
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  product != null ? "Edit Product" : "Add Product",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 _buildTextField(nameController, "Product Name"),
                 const SizedBox(height: 12),
-                _buildTextField(priceController, "Price", isNumber: true),
+
+                // Brand Dropdown
+                DropdownButtonFormField<String>(
+                  value: selectedBrand,
+                  decoration: InputDecoration(
+                    labelText: "Brand",
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) => value == null ? "Select a brand" : null,
+                  items: brandsList
+                      .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedBrand = value;
+                    });
+                  },
+                ),
                 const SizedBox(height: 12),
+
+                // ✅ Price & Stock in One Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        priceController,
+                        "Price",
+                        isNumber: true,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildTextField(
+                        stockController,
+                        "Stock",
+                        isNumber: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
                 _buildTextField(descriptionController, "Description"),
                 const SizedBox(height: 12),
                 _buildTextField(imageUrlController, "Image URL"),
                 const SizedBox(height: 12),
                 _buildCategoryDropdown(),
+                const SizedBox(height: 20),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel"),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.main,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        if (_formKey.currentState!.validate() &&
+                            selectedCategory != null &&
+                            selectedBrand != null) {
+                          final productData = {
+                            'name': nameController.text.trim(),
+                            'brand': selectedBrand!,
+                            'price': double.parse(priceController.text),
+                            'stock': int.parse(stockController.text),
+                            'description': descriptionController.text.trim(),
+                            'imageUrl': imageUrlController.text.trim(),
+                            'category': selectedCategory!,
+                          };
+
+                          if (editingDocId != null) {
+                            await _firestore
+                                .collection('products')
+                                .doc(editingDocId)
+                                .update(productData);
+                          } else {
+                            await _firestore
+                                .collection('products')
+                                .add(productData);
+                          }
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: Text(product != null ? "Update" : "Add"),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.main,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () async {
-              if (_formKey.currentState!.validate() &&
-                  selectedCategory != null) {
-                final productData = {
-                  'name': nameController.text.trim(),
-                  'price': double.parse(priceController.text),
-                  'description': descriptionController.text.trim(),
-                  'imageUrl': imageUrlController.text.trim(),
-                  'category': selectedCategory!,
-                };
-
-                if (editingDocId != null) {
-                  await _firestore
-                      .collection('products')
-                      .doc(editingDocId)
-                      .update(productData);
-                } else {
-                  await _firestore.collection('products').add(productData);
-                }
-                Navigator.pop(context);
-              }
-            },
-            child: Text(product != null ? "Update" : "Add"),
-          ),
-        ],
       ),
     );
   }
 
+  // ===================== TEXT FIELD BUILDER =====================
   Widget _buildTextField(
     TextEditingController controller,
     String label, {
@@ -118,16 +196,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
     return TextFormField(
       controller: controller,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      validator: (value) => value!.isEmpty ? "Enter $label" : null,
+      validator: (value) {
+        if (value == null || value.isEmpty) return "Enter $label";
+        if (isNumber && double.tryParse(value) == null) {
+          return "Enter a valid number";
+        }
+        return null;
+      },
       decoration: InputDecoration(
         labelText: label,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
+  // ===================== CATEGORY DROPDOWN =====================
   Widget _buildCategoryDropdown() {
     return DropdownButtonFormField<String>(
       value: selectedCategory,
@@ -146,19 +231,30 @@ class _ProductsScreenState extends State<ProductsScreen> {
       decoration: InputDecoration(
         labelText: "Category",
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Colors.grey[100],
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
+  // ===================== DELETE PRODUCT =====================
   void _deleteProduct(String docId) async {
     await _firestore.collection('products').doc(docId).delete();
   }
 
+  // ===================== TOGGLE SEARCH BAR =====================
+  void _toggleSearch() {
+    setState(() {
+      _isSearchVisible = !_isSearchVisible;
+      if (!_isSearchVisible) {
+        _searchController.clear();
+        searchQuery = '';
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 👇 Query set according to filter
     Query productsQuery = _firestore.collection('products');
     if (filterCategory != null && filterCategory!.isNotEmpty) {
       productsQuery = productsQuery.where(
@@ -172,10 +268,44 @@ class _ProductsScreenState extends State<ProductsScreen> {
       appBar: AppBar(
         title: const Text("Products Management"),
         backgroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(_isSearchVisible ? Icons.close : Icons.search),
+            onPressed: _toggleSearch,
+          ),
+        ],
+        bottom: _isSearchVisible
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(56),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) {
+                      setState(() {
+                        searchQuery = val.trim().toLowerCase();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search by name, brand, price or stock...",
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : null,
       ),
       body: Column(
         children: [
-          // ================= FILTER SECTION =================
+          // ===================== CATEGORY FILTER =====================
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Row(
@@ -219,7 +349,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         )
                         .toList(),
                     decoration: InputDecoration(
-                      labelText: "Select Category",
+                      labelText: "Category",
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(
@@ -236,7 +366,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
           ),
 
-          // ================= PRODUCT LIST =================
+          // ===================== PRODUCT LIST =====================
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: productsQuery.snapshots(),
@@ -245,7 +375,20 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final products = snapshot.data!.docs;
+                final allProducts = snapshot.data!.docs;
+
+                // Local filtering by searchQuery
+                final products = allProducts.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final name = (data['name'] ?? '').toString().toLowerCase();
+                  final brand = (data['brand'] ?? '').toString().toLowerCase();
+                  final price = (data['price'] ?? '').toString();
+                  final stock = (data['stock'] ?? '').toString();
+                  return name.contains(searchQuery) ||
+                      brand.contains(searchQuery) ||
+                      price.contains(searchQuery) ||
+                      stock.contains(searchQuery);
+                }).toList();
 
                 if (products.isEmpty) {
                   return const Center(
@@ -263,6 +406,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     final product = products[index];
                     final data = product.data() as Map<String, dynamic>;
                     final imageUrl = data['imageUrl'] ?? '';
+                    final stock = data['stock'] ?? 0;
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -308,15 +452,41 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                   color: Colors.white,
                                 ),
                               ),
-                        title: Text(
-                          data['name'] ?? '',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                data['name'] ?? '',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            if (stock == 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  "Out of Stock",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         subtitle: Text(
-                          "${data['category'] ?? 'Uncategorized'} • \$${data['price'] ?? '0'}",
+                          "${data['brand'] ?? 'No Brand'} • ${data['category'] ?? 'Uncategorized'} • \$${data['price'] ?? '0'} • Stock: $stock",
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,

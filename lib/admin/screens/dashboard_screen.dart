@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:laptop_harbor/admin/screens/brands_screen.dart';
 import 'package:rxdart/rxdart.dart'; // 👈 for combineLatest
 import 'package:laptop_harbor/admin/screens/orders_screen.dart';
 import 'package:laptop_harbor/admin/screens/products_screen.dart';
@@ -454,11 +455,14 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
                         },
                       ),
                       const Divider(height: 1),
-                      _adminDrawerItem(
-                        Icons.settings_outlined,
-                        "Settings",
-                        () {},
-                      ),
+                      _adminDrawerItem(Icons.settings_outlined, "Brands", () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const BrandsScreen(),
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ),

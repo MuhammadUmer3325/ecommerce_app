@@ -1,13 +1,23 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
-import 'package:laptop_harbor/screens/auth/login_screen.dart';
+import 'package:laptop_harbor/screens/home_screen.dart';
 import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
+
+  // ✅ Save onboarding flag
+  Future<void> _completeOnboarding(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_completed', true); // flag save
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,19 +38,14 @@ class OnboardingScreen extends StatelessWidget {
                 topRight: Radius.circular(1000.0),
               ),
               child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: 20,
-                  sigmaY: 20,
-                ), // 👈 strong blur
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Container(
                   height: screenHeight * 0.4,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.white.withOpacity(0.25), // upar light glass
-                        Colors.white.withOpacity(
-                          0.05,
-                        ), // neeche darker transparent
+                        Colors.white.withOpacity(0.25),
+                        Colors.white.withOpacity(0.05),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -50,14 +55,12 @@ class OnboardingScreen extends StatelessWidget {
                       topRight: Radius.circular(1000.0),
                     ),
                     border: Border.all(
-                      color: Colors.white.withOpacity(
-                        0.3,
-                      ), // 👈 subtle glass border
+                      color: Colors.white.withOpacity(0.3),
                       width: 1.2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1), // depth ke liye
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -96,13 +99,6 @@ class OnboardingScreen extends StatelessWidget {
                       fontSize: 30,
                       fontWeight: FontWeight.bold,
                       color: AppColors.main,
-                      // shadows: const [
-                      //   Shadow(
-                      //     offset: Offset(0, 1),
-                      //     blurRadius: 3,
-                      //     color: Colors.black26,
-                      //   ),
-                      // ],
                     ),
                   ),
 
@@ -137,14 +133,7 @@ class OnboardingScreen extends StatelessWidget {
                       elevation: 6,
                       shadowColor: Colors.black38,
                     ),
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HomeScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: () => _completeOnboarding(context),
                     child: Text(
                       "Get Started",
                       style: GoogleFonts.montserrat(
