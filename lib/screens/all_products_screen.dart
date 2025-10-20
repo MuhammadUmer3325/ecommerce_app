@@ -53,28 +53,20 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
     setState(() {
       _selectedIndex = index;
     });
-    // Yahan future navigation ya action add kar sakte ho
   }
 
   @override
   Widget build(BuildContext context) {
-    Query productsQuery = _firestore.collection('products');
+    final Query productsQuery = _firestore.collection('products');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-
-      // ===================== BODY =====================
       body: SafeArea(
         child: Column(
           children: [
             // ===================== TOP APP BAR =====================
             Container(
-              padding: const EdgeInsets.only(
-                left: 12,
-                right: 12,
-                top: 8,
-                bottom: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               color: Colors.grey[200],
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,18 +109,18 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                                 searchQuery = val.trim().toLowerCase();
                               });
                             },
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               hintText: "Search for laptops, brands...",
-                              hintStyle: const TextStyle(
+                              hintStyle: TextStyle(
                                 color: Colors.black54,
                                 fontSize: 14,
                               ),
-                              prefixIcon: const Icon(
+                              prefixIcon: Icon(
                                 Icons.search,
                                 color: Colors.grey,
                               ),
                               border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
+                              contentPadding: EdgeInsets.symmetric(
                                 vertical: 14,
                               ),
                               fillColor: Colors.transparent,
@@ -194,242 +186,280 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
 
             // ===================== PRODUCTS GRID =====================
             Expanded(
-              child: Stack(
-                children: [
-                  StreamBuilder<QuerySnapshot>(
-                    stream: productsQuery.snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double width = constraints.maxWidth;
+                  int crossAxisCount;
 
-                      final allProducts = snapshot.data!.docs;
+                  if (width < 500) {
+                    crossAxisCount = 2;
+                  } else if (width < 900) {
+                    crossAxisCount = 3;
+                  } else {
+                    crossAxisCount = 5;
+                  }
 
-                      final products = allProducts.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final name = (data['name'] ?? '')
-                            .toString()
-                            .toLowerCase();
-                        final brand = (data['brand'] ?? '')
-                            .toString()
-                            .toLowerCase();
-                        final price = (data['price'] ?? '').toString();
-                        final stock = (data['stock'] ?? '').toString();
-                        return name.contains(searchQuery) ||
-                            brand.contains(searchQuery) ||
-                            price.contains(searchQuery) ||
-                            stock.contains(searchQuery);
-                      }).toList();
+                  return Stack(
+                    children: [
+                      StreamBuilder<QuerySnapshot>(
+                        stream: productsQuery.snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                      if (products.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            "No products found",
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        );
-                      }
+                          final allProducts = snapshot.data!.docs;
 
-                      return GridView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 0.75,
-                            ),
-                        itemCount: products.length,
-                        itemBuilder: (context, index) {
-                          final product =
-                              products[index].data() as Map<String, dynamic>;
-                          final stock = product['stock'] ?? 0;
-                          final imageUrl = product['imageUrl'] ?? '';
+                          final products = allProducts.where((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final name = (data['name'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            final brand = (data['brand'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            final price = (data['price'] ?? '').toString();
+                            final stock = (data['stock'] ?? '').toString();
+                            return name.contains(searchQuery) ||
+                                brand.contains(searchQuery) ||
+                                price.contains(searchQuery) ||
+                                stock.contains(searchQuery);
+                          }).toList();
 
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 4),
+                          if (products.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                "No products found",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
                                 ),
-                              ],
+                              ),
+                            );
+                          }
+
+                          return GridView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Stack(
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 0.65,
+                                ),
+                            itemCount: products.length,
+                            itemBuilder: (context, index) {
+                              final product =
+                                  products[index].data()
+                                      as Map<String, dynamic>;
+                              final stock = product['stock'] ?? 0;
+                              final imageUrl = product['imageUrl'] ?? '';
+
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    // Image Section
                                     ClipRRect(
                                       borderRadius: const BorderRadius.vertical(
                                         top: Radius.circular(16),
                                       ),
-                                      child: Container(
-                                        height: 140,
-                                        width: double.infinity,
-                                        color: Colors.white,
-                                        alignment: Alignment.center,
-                                        child: Image.network(
-                                          imageUrl,
-                                          fit: BoxFit.contain,
-                                          errorBuilder: (_, __, ___) =>
-                                              Container(
-                                                color: Colors.grey[300],
-                                                child: const Icon(
-                                                  Icons.broken_image,
-                                                  size: 40,
+                                      child: Stack(
+                                        children: [
+                                          AspectRatio(
+                                            aspectRatio: 1.2,
+                                            child: Container(
+                                              color: Colors.white,
+                                              alignment: Alignment.center,
+                                              child: Image.network(
+                                                imageUrl,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (_, __, ___) =>
+                                                    Container(
+                                                      color: Colors.grey[300],
+                                                      child: const Icon(
+                                                        Icons.broken_image,
+                                                        size: 40,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            top: 8,
+                                            left: 8,
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: stock == 0
+                                                    ? Colors.redAccent
+                                                    : Colors.green,
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                              child: Text(
+                                                stock == 0
+                                                    ? "Out of Stock"
+                                                    : "Sale",
+                                                style: const TextStyle(
                                                   color: Colors.white,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
                                               ),
-                                        ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    Positioned(
-                                      top: 8,
-                                      left: 8,
-                                      child: Container(
+
+                                    // Text & Button Section (Tighter)
+                                    Expanded(
+                                      child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
+                                          horizontal: 8.0,
+                                          vertical: 6,
                                         ),
-                                        decoration: BoxDecoration(
-                                          color: stock == 0
-                                              ? Colors.redAccent
-                                              : Colors.green,
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          stock == 0 ? "Out of Stock" : "Sale",
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  product['name'] ?? '',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  product['brand'] ?? '',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  "Rs ${product['price']}",
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.black87,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: ElevatedButton(
+                                                onPressed: stock == 0
+                                                    ? null
+                                                    : () {},
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      AppColors.main,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 6,
+                                                      ),
+                                                ),
+                                                child: const Text(
+                                                  "Add to Cart",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0,
-                                    vertical: 6,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product['name'] ?? '',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        product['brand'] ?? '',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "Rs ${product['price']}",
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.black87,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Center(
-                                        child: SizedBox(
-                                          width: 100,
-                                          child: ElevatedButton(
-                                            onPressed: stock == 0
-                                                ? null
-                                                : () {},
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.main,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 6,
-                                                  ),
-                                            ),
-                                            child: const Text(
-                                              "Add to Cart",
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
+                      ),
 
-                  // ===================== TOP FADE EFFECT =====================
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 200),
-                        opacity: _topFadeOpacity,
-                        child: Container(
-                          height: 40,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.white.withOpacity(0.8),
-                                Colors.white.withOpacity(0.0),
-                              ],
+                      // ===================== TOP FADE EFFECT =====================
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: IgnorePointer(
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 200),
+                            opacity: _topFadeOpacity,
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.white.withOpacity(0.8),
+                                    Colors.white.withOpacity(0.0),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
 
-      // ===================== BOTTOM NAV BAR =====================
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
