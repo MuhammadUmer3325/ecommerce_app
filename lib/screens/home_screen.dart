@@ -813,12 +813,23 @@ class _HomeBody extends StatelessWidget {
 
               return LayoutBuilder(
                 builder: (context, constraints) {
-                  int crossAxis = constraints.maxWidth > 600 ? 3 : 2;
-                  double spacing = 12;
-                  double width =
-                      (constraints.maxWidth - ((crossAxis - 1) * spacing)) /
-                      crossAxis;
-                  double height = width * 1.45;
+                  final screenWidth = constraints.maxWidth;
+
+                  // ✅ Responsive columns based on available width
+                  int crossAxisCount = 2;
+                  if (screenWidth > 1200) {
+                    crossAxisCount = 5;
+                  } else if (screenWidth > 900) {
+                    crossAxisCount = 4;
+                  } else if (screenWidth > 600) {
+                    crossAxisCount = 3;
+                  }
+
+                  const double spacing = 12;
+                  final double cardWidth =
+                      (screenWidth - ((crossAxisCount - 1) * spacing)) /
+                      crossAxisCount;
+                  final double cardHeight = cardWidth * 1.45;
 
                   return GridView.builder(
                     shrinkWrap: true,
@@ -829,10 +840,10 @@ class _HomeBody extends StatelessWidget {
                     ),
                     itemCount: products.length,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxis,
+                      crossAxisCount: crossAxisCount,
                       crossAxisSpacing: spacing,
                       mainAxisSpacing: spacing,
-                      childAspectRatio: width / height,
+                      childAspectRatio: cardWidth / cardHeight,
                     ),
                     itemBuilder: (context, index) {
                       final product =
@@ -846,7 +857,7 @@ class _HomeBody extends StatelessWidget {
                         },
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.grey[100], // ✅ Light gray background
+                            color: Colors.grey[100],
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
@@ -859,7 +870,7 @@ class _HomeBody extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Image + Badge
+                              // ====== Product Image + Badge ======
                               Stack(
                                 children: [
                                   ClipRRect(
@@ -869,12 +880,12 @@ class _HomeBody extends StatelessWidget {
                                     child: Image.network(
                                       imageUrl,
                                       width: double.infinity,
-                                      height: height * 0.5,
+                                      height: cardHeight * 0.5,
                                       fit: BoxFit.cover,
                                       errorBuilder:
                                           (context, error, stackTrace) {
                                             return Container(
-                                              height: height * 0.5,
+                                              height: cardHeight * 0.5,
                                               color: Colors.grey[300],
                                               child: const Icon(
                                                 Icons.broken_image,
@@ -912,68 +923,78 @@ class _HomeBody extends StatelessWidget {
                                 ],
                               ),
 
-                              // Product Info
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      product['name'] ?? '',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
+                              // ====== Product Info ======
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        product['name'] ?? '',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: screenWidth < 400 ? 12 : 14,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      product['brand'] ?? '',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        product['brand'] ?? '',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: screenWidth < 400 ? 10 : 12,
+                                          color: Colors.grey,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "Rs ${product['price']}",
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.black87,
-                                        fontWeight: FontWeight.w500,
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "Rs ${product['price']}",
+                                        style: TextStyle(
+                                          fontSize: screenWidth < 400 ? 11 : 13,
+                                          color: Colors.black87,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    // ======= Add to Cart button =======
-                                    Center(
-                                      child: SizedBox(
-                                        width:
-                                            100, // ya MediaQuery se responsive
-                                        child: ElevatedButton(
-                                          onPressed: stock == 0 ? null : () {},
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.main,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
+                                      const Spacer(),
+                                      Center(
+                                        child: SizedBox(
+                                          width: screenWidth < 400
+                                              ? double.infinity
+                                              : 110,
+                                          child: ElevatedButton(
+                                            onPressed: stock == 0
+                                                ? null
+                                                : () {},
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppColors.main,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 6,
+                                                  ),
                                             ),
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 6,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            "Add to Cart",
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.white,
+                                            child: Text(
+                                              "Add to Cart",
+                                              style: TextStyle(
+                                                fontSize: screenWidth < 400
+                                                    ? 11
+                                                    : 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
