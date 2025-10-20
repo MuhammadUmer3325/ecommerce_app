@@ -3,10 +3,12 @@ import 'package:laptop_harbor/admin/screens/dashboard_screen.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
+import 'package:laptop_harbor/screens/all_products_screen.dart';
 import 'package:laptop_harbor/screens/auth/login_screen.dart';
 import 'package:laptop_harbor/screens/auth/signup_screen.dart';
 import 'product_details_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -747,66 +749,238 @@ class _HomeBody extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // ===================== Featured Products =====================
-          const Text(
-            "Featured Products",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.main,
+          // ===================== Featured Products Section =====================
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Featured Products",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.main,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AllProductsScreen(),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    backgroundColor: AppColors.main,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    "See All",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
 
-          LayoutBuilder(
-            builder: (context, constraints) {
-              double gridWidth = constraints.maxWidth;
-              int crossAxisCount = gridWidth > 600 ? 3 : 2;
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('products')
+                .where('featured', isEqualTo: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-              final products = [
-                {
-                  "name": "Smartphone",
-                  "price": "\$299",
-                  "icon": Icons.phone_android,
-                  "isSale": true,
-                },
-                {
-                  "name": "Laptop",
-                  "price": "\$799",
-                  "icon": Icons.laptop_mac,
-                  "isSale": true,
-                },
-                {
-                  "name": "Smart Watch",
-                  "price": "\$149",
-                  "icon": Icons.watch,
-                  "isSale": true,
-                },
-                {
-                  "name": "Headphones",
-                  "price": "\$99",
-                  "icon": Icons.headphones,
-                  "isSale": true,
-                },
-              ];
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text('No featured products found'));
+              }
 
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: products.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.7,
-                ),
-                itemBuilder: (context, index) {
-                  final product = products[index];
-                  return _ProductCard(
-                    name: product["name"] as String,
-                    price: product["price"] as String,
-                    image: product["icon"] as IconData,
-                    isSale: product["isSale"] as bool,
+              final products = snapshot.data!.docs;
+
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  int crossAxis = constraints.maxWidth > 600 ? 3 : 2;
+                  double spacing = 12;
+                  double width =
+                      (constraints.maxWidth - ((crossAxis - 1) * spacing)) /
+                      crossAxis;
+                  double height = width * 1.45;
+
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    itemCount: products.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxis,
+                      crossAxisSpacing: spacing,
+                      mainAxisSpacing: spacing,
+                      childAspectRatio: width / height,
+                    ),
+                    itemBuilder: (context, index) {
+                      final product =
+                          products[index].data() as Map<String, dynamic>;
+                      final stock = product['stock'] ?? 0;
+                      final imageUrl = product['imageUrl'] ?? '';
+
+                      return GestureDetector(
+                        onTap: () {
+                          // TODO: Navigate to Product Detail screen
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100], // ✅ Light gray background
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 6,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Image + Badge
+                              Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(16),
+                                    ),
+                                    child: Image.network(
+                                      imageUrl,
+                                      width: double.infinity,
+                                      height: height * 0.5,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            return Container(
+                                              height: height * 0.5,
+                                              color: Colors.grey[300],
+                                              child: const Icon(
+                                                Icons.broken_image,
+                                                size: 40,
+                                                color: Colors.white,
+                                              ),
+                                            );
+                                          },
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    left: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: stock == 0
+                                            ? Colors.redAccent
+                                            : Colors.green,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        stock == 0 ? "Out of Stock" : "Sale",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              // Product Info
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      product['name'] ?? '',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      product['brand'] ?? '',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Rs ${product['price']}",
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    // ======= Add to Cart button =======
+                                    Center(
+                                      child: SizedBox(
+                                        width:
+                                            100, // ya MediaQuery se responsive
+                                        child: ElevatedButton(
+                                          onPressed: stock == 0 ? null : () {},
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.main,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 6,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            "Add to Cart",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               );
