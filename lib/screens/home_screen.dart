@@ -127,54 +127,68 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      // ===================== DRAWER =====================
+      // ===================== RESPONSIVE DRAWER =====================
       drawer: Drawer(
-        width: MediaQuery.of(context).size.width,
+        // Responsive width
+        width: MediaQuery.of(context).size.width < 600
+            ? MediaQuery.of(context)
+                  .size
+                  .width // Full width for mobile
+            : 400, // Fixed width for web/tablet
         child: SafeArea(
           child: Column(
             children: [
-              // 🔙 Back + Title
+              // 🔙 Back button + Title Row
               Padding(
-                padding: const EdgeInsets.only(top: 16, left: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 16,
+                ),
                 child: Row(
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.dark,
-                        border: Border.all(color: AppColors.hint, width: 1),
+                    if (MediaQuery.of(context).size.width < 600)
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.dark,
+                          border: Border.all(color: AppColors.hint, width: 1),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                        ),
                       ),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ),
                     Expanded(
                       child: Center(
                         child: Text(
                           "Settings",
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: MediaQuery.of(context).size.width < 600
+                                ? 22
+                                : 26,
                             fontWeight: FontWeight.bold,
                             color: AppColors.dark,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 48),
+                    if (MediaQuery.of(context).size.width < 600)
+                      const SizedBox(width: 48),
                   ],
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              // 👤 Profile Card
+              // Expanded ListView for settings
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    // 👤 Profile Card
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -201,19 +215,19 @@ class _HomeScreenState extends State<HomeScreen> {
                               : "Product/UI Designer",
                         ),
                         trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          Navigator.pushNamed(context, "/profile");
-                        },
+                        onTap: () => Navigator.pushNamed(context, "/profile"),
                       ),
                     ),
 
                     const SizedBox(height: 20),
+
                     const Text(
                       "Other settings",
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 10),
 
+                    // Settings List
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -251,6 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 20),
 
+                    // Info Section
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -272,35 +287,35 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
+
+                    const SizedBox(height: 20),
+
+                    // Admin Panel (if admin)
+                    if (_currentUser?.email == 'admin@laptopharbor.com') ...[
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: const Icon(Icons.admin_panel_settings),
+                          title: const Text("Admin Panel"),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DashboardScreen(),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ],
                 ),
               ),
 
-              // 👑 Only show this if the logged in user is the admin
-              if (_currentUser?.email == 'admin@laptopharbor.com') ...[
-                const SizedBox(height: 20),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    leading: const Icon(Icons.admin_panel_settings),
-                    title: const Text("Admin Panel"),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DashboardScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-
-              // 🚪 Login / Signup OR Logout (STATE-based, not StreamBuilder)
+              // 🚪 Login/Signup or Logout at the bottom (sticky)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: _currentUser == null
@@ -318,9 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     builder: (_) => const LoginScreen(),
                                   ),
                                 );
-                                if (result != null) {
-                                  Navigator.pop(context);
-                                }
+                                if (result != null) Navigator.pop(context);
                               },
                             ),
                           ),
@@ -337,9 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     builder: (_) => const SignupScreen(),
                                   ),
                                 );
-                                if (result != null) {
-                                  Navigator.pop(context);
-                                }
+                                if (result != null) Navigator.pop(context);
                               },
                             ),
                           ),
@@ -350,14 +361,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.logout),
                           label: const Text("Logout"),
-                          onPressed: () async {
-                            await FirebaseAuth.instance.signOut();
-                          },
+                          onPressed: () async =>
+                              await FirebaseAuth.instance.signOut(),
                         ),
                       ),
               ),
-
-              const SizedBox(height: 20),
             ],
           ),
         ),

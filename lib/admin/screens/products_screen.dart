@@ -36,6 +36,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final brandsSnapshot = await _firestore.collection('brands').get();
     brandsList = brandsSnapshot.docs.map((e) => e['name'].toString()).toList();
 
+    bool isFeatured = false; // 🔥 FEATURED TOGGLE STATE
+
     if (product != null) {
       final data = product.data() as Map<String, dynamic>;
       editingDocId = product.id;
@@ -46,6 +48,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       stockController.text = data['stock']?.toString() ?? '0';
       selectedCategory = data['category'];
       selectedBrand = data['brand'];
+      isFeatured = data['featured'] ?? false; // 🔥 Load existing value
     } else {
       editingDocId = null;
       nameController.clear();
@@ -55,6 +58,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       stockController.clear();
       selectedCategory = null;
       selectedBrand = null;
+      isFeatured = false; // 🔥 Default false
     }
 
     showDialog(
@@ -64,122 +68,138 @@ class _ProductsScreenState extends State<ProductsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product != null ? "Edit Product" : "Add Product",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(nameController, "Product Name"),
-                const SizedBox(height: 12),
-
-                // Brand Dropdown
-                DropdownButtonFormField<String>(
-                  value: selectedBrand,
-                  decoration: InputDecoration(
-                    labelText: "Brand",
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+          child: StatefulBuilder(
+            builder: (context, setStateDialog) => Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product != null ? "Edit Product" : "Add Product",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
                     ),
                   ),
-                  validator: (value) => value == null ? "Select a brand" : null,
-                  items: brandsList
-                      .map((b) => DropdownMenuItem(value: b, child: Text(b)))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedBrand = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+                  _buildTextField(nameController, "Product Name"),
+                  const SizedBox(height: 12),
 
-                // ✅ Price & Stock in One Row
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        priceController,
-                        "Price",
-                        isNumber: true,
+                  // Brand Dropdown
+                  DropdownButtonFormField<String>(
+                    value: selectedBrand,
+                    decoration: InputDecoration(
+                      labelText: "Brand",
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildTextField(
-                        stockController,
-                        "Stock",
-                        isNumber: true,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                    validator: (value) =>
+                        value == null ? "Select a brand" : null,
+                    items: brandsList
+                        .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                        .toList(),
+                    onChanged: (value) {
+                      setStateDialog(() {
+                        selectedBrand = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
 
-                _buildTextField(descriptionController, "Description"),
-                const SizedBox(height: 12),
-                _buildTextField(imageUrlController, "Image URL"),
-                const SizedBox(height: 12),
-                _buildCategoryDropdown(),
-                const SizedBox(height: 20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel"),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.main,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  // Price & Stock in one row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          priceController,
+                          "Price",
+                          isNumber: true,
                         ),
                       ),
-                      onPressed: () async {
-                        if (_formKey.currentState!.validate() &&
-                            selectedCategory != null &&
-                            selectedBrand != null) {
-                          final productData = {
-                            'name': nameController.text.trim(),
-                            'brand': selectedBrand!,
-                            'price': double.parse(priceController.text),
-                            'stock': int.parse(stockController.text),
-                            'description': descriptionController.text.trim(),
-                            'imageUrl': imageUrlController.text.trim(),
-                            'category': selectedCategory!,
-                          };
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildTextField(
+                          stockController,
+                          "Stock",
+                          isNumber: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
 
-                          if (editingDocId != null) {
-                            await _firestore
-                                .collection('products')
-                                .doc(editingDocId)
-                                .update(productData);
-                          } else {
-                            await _firestore
-                                .collection('products')
-                                .add(productData);
+                  _buildTextField(descriptionController, "Description"),
+                  const SizedBox(height: 12),
+                  _buildTextField(imageUrlController, "Image URL"),
+                  const SizedBox(height: 12),
+                  _buildCategoryDropdown(),
+                  const SizedBox(height: 12),
+
+                  // 🔥 FEATURED TOGGLE
+                  SwitchListTile(
+                    title: const Text("Featured Product"),
+                    value: isFeatured,
+                    onChanged: (val) {
+                      setStateDialog(() {
+                        isFeatured = val;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.main,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          if (_formKey.currentState!.validate() &&
+                              selectedCategory != null &&
+                              selectedBrand != null) {
+                            final productData = {
+                              'name': nameController.text.trim(),
+                              'brand': selectedBrand!,
+                              'price': double.parse(priceController.text),
+                              'stock': int.parse(stockController.text),
+                              'description': descriptionController.text.trim(),
+                              'imageUrl': imageUrlController.text.trim(),
+                              'category': selectedCategory!,
+                              'featured': isFeatured, // 🔥 Save toggle value
+                            };
+
+                            if (editingDocId != null) {
+                              await _firestore
+                                  .collection('products')
+                                  .doc(editingDocId)
+                                  .update(productData);
+                            } else {
+                              await _firestore
+                                  .collection('products')
+                                  .add(productData);
+                            }
+                            Navigator.pop(context);
                           }
-                          Navigator.pop(context);
-                        }
-                      },
-                      child: Text(product != null ? "Update" : "Add"),
-                    ),
-                  ],
-                ),
-              ],
+                        },
+                        child: Text(product != null ? "Update" : "Add"),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -407,6 +427,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     final data = product.data() as Map<String, dynamic>;
                     final imageUrl = data['imageUrl'] ?? '';
                     final stock = data['stock'] ?? 0;
+                    final featured = data['featured'] ?? false;
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -485,8 +506,33 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               ),
                           ],
                         ),
-                        subtitle: Text(
-                          "${data['brand'] ?? 'No Brand'} • ${data['category'] ?? 'Uncategorized'} • \$${data['price'] ?? '0'} • Stock: $stock",
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "${data['brand'] ?? 'No Brand'} • ${data['category'] ?? 'Uncategorized'} • \$${data['price'] ?? '0'} • Stock: $stock",
+                            ),
+                            if (featured)
+                              Container(
+                                margin: const EdgeInsets.only(top: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orangeAccent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  "Featured",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,

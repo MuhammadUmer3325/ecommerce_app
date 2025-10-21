@@ -18,8 +18,14 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
 
   String searchQuery = '';
   String selectedFilter = '';
+  String selectedBrand = '';
+  String selectedCategory = '';
   double _topFadeOpacity = 0.0;
   int _selectedIndex = 0;
+
+  RangeValues priceRange = const RangeValues(0, 100000);
+  double minPrice = 0;
+  double maxPrice = 100000;
 
   final List<String> filters = [
     'Filter',
@@ -27,18 +33,57 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
     'Price High-Low',
     'Brand',
     'Category',
+    'Price Range',
   ];
+
+  final List<String> brands = [
+    'HP',
+    'Dell',
+    'Asus',
+    'Lenovo',
+    'Apple',
+    'Acer',
+    'Razer',
+    'Gigabyte',
+    'MSI',
+    'Samsung',
+  ];
+  final List<String> categories = ['Gaming', 'Business', 'Student', 'Budget'];
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_handleScroll);
+    _fetchPriceRange();
   }
 
   void _handleScroll() {
     double offset = _scrollController.offset;
     setState(() {
       _topFadeOpacity = (offset / 50).clamp(0.0, 1.0);
+    });
+  }
+
+  Future<void> _fetchPriceRange() async {
+    final snapshot = await _firestore.collection('products').get();
+    if (snapshot.docs.isEmpty) return;
+
+    double min = double.infinity;
+    double max = 0;
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final price = (data['price'] ?? 0) is int
+          ? (data['price'] as int).toDouble()
+          : double.tryParse((data['price'] ?? '0').toString()) ?? 0;
+      if (price < min) min = price;
+      if (price > max) max = price;
+    }
+
+    setState(() {
+      minPrice = min;
+      maxPrice = max;
+      priceRange = RangeValues(minPrice, maxPrice);
     });
   }
 
@@ -55,10 +100,65 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
     });
   }
 
+  // ===================== FILTER FUNCTION =====================
+  List<QueryDocumentSnapshot> _applyFilters(
+    List<QueryDocumentSnapshot> allProducts,
+  ) {
+    List<QueryDocumentSnapshot> filtered = allProducts;
+
+    if (selectedBrand.isNotEmpty) {
+      filtered = filtered.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return (data['brand'] ?? '').toString().toLowerCase() ==
+            selectedBrand.toLowerCase();
+      }).toList();
+    }
+
+    if (selectedCategory.isNotEmpty) {
+      filtered = filtered.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return (data['category'] ?? '').toString().toLowerCase() ==
+            selectedCategory.toLowerCase();
+      }).toList();
+    }
+
+    if (selectedFilter == 'Price Low-High') {
+      filtered.sort((a, b) {
+        final priceA = (a['price'] ?? 0) is int
+            ? a['price']
+            : int.tryParse(a['price'].toString()) ?? 0;
+        final priceB = (b['price'] ?? 0) is int
+            ? b['price']
+            : int.tryParse(b['price'].toString()) ?? 0;
+        return priceA.compareTo(priceB);
+      });
+    } else if (selectedFilter == 'Price High-Low') {
+      filtered.sort((a, b) {
+        final priceA = (a['price'] ?? 0) is int
+            ? a['price']
+            : int.tryParse(a['price'].toString()) ?? 0;
+        final priceB = (b['price'] ?? 0) is int
+            ? b['price']
+            : int.tryParse(b['price'].toString()) ?? 0;
+        return priceB.compareTo(priceA);
+      });
+    }
+
+    if (selectedFilter == 'Price Range') {
+      filtered = filtered.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final price = (data['price'] ?? 0) is int
+            ? (data['price'] as int).toDouble()
+            : double.tryParse((data['price'] ?? '0').toString()) ?? 0;
+        return price >= priceRange.start && price <= priceRange.end;
+      }).toList();
+    }
+
+    return filtered;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final Query productsQuery = _firestore.collection('products');
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
@@ -134,49 +234,148 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                   const SizedBox(height: 12),
 
                   // ===================== FILTER BUTTONS =====================
-                  SizedBox(
-                    height: 40,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: filters.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final filter = filters[index];
-                        final isSelected = selectedFilter == filter;
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        height: 40,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: filters.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final filter = filters[index];
+                            final isSelected = selectedFilter == filter;
 
-                        return ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              selectedFilter = filter;
-                            });
+                            return ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  selectedFilter = isSelected ? '' : filter;
+                                  selectedBrand = '';
+                                  selectedCategory = '';
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isSelected
+                                    ? AppColors.main
+                                    : Colors.white,
+                                foregroundColor: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                filter,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isSelected
-                                ? AppColors.main
-                                : Colors.white,
-                            foregroundColor: isSelected
-                                ? Colors.white
-                                : Colors.black87,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
-                            ),
-                            elevation: 0,
+                        ),
+                      ),
+
+                      // ===================== FILTER CONTENT LINE =====================
+                      if (selectedFilter == 'Brand') ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 36,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: brands.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (context, index) {
+                              final brand = brands[index];
+                              final isActive = selectedBrand == brand;
+                              return ChoiceChip(
+                                label: Text(brand),
+                                selected: isActive,
+                                selectedColor: AppColors.main,
+                                labelStyle: TextStyle(
+                                  color: isActive ? Colors.white : Colors.black,
+                                ),
+                                onSelected: (_) {
+                                  setState(() {
+                                    selectedBrand = isActive ? '' : brand;
+                                  });
+                                },
+                              );
+                            },
                           ),
-                          child: Text(
-                            filter,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        ),
+                      ],
+
+                      if (selectedFilter == 'Category') ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 36,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: categories.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (context, index) {
+                              final category = categories[index];
+                              final isActive = selectedCategory == category;
+                              return ChoiceChip(
+                                label: Text(category),
+                                selected: isActive,
+                                selectedColor: AppColors.main,
+                                labelStyle: TextStyle(
+                                  color: isActive ? Colors.white : Colors.black,
+                                ),
+                                onSelected: (_) {
+                                  setState(() {
+                                    selectedCategory = isActive ? '' : category;
+                                  });
+                                },
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      ],
+
+                      // ===================== PRICE RANGE SLIDER =====================
+                      if (selectedFilter == 'Price Range') ...[
+                        const SizedBox(height: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RangeSlider(
+                              min: minPrice,
+                              max: maxPrice,
+                              values: priceRange,
+                              labels: RangeLabels(
+                                'Rs ${priceRange.start.toInt()}',
+                                'Rs ${priceRange.end.toInt()}',
+                              ),
+                              onChanged: (RangeValues values) {
+                                setState(() {
+                                  priceRange = values;
+                                });
+                              },
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Min: Rs ${priceRange.start.toInt()}'),
+                                Text('Max: Rs ${priceRange.end.toInt()}'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -184,25 +383,17 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
 
             const SizedBox(height: 12),
 
-            // ===================== PRODUCTS GRID =====================
+            // ===================== PRODUCTS GRID WITH TOP FADE =====================
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   double width = constraints.maxWidth;
-                  int crossAxisCount;
-
-                  if (width < 500) {
-                    crossAxisCount = 2;
-                  } else if (width < 900) {
-                    crossAxisCount = 3;
-                  } else {
-                    crossAxisCount = 5;
-                  }
+                  int crossAxisCount = width < 500 ? 2 : (width < 900 ? 3 : 5);
 
                   return Stack(
                     children: [
                       StreamBuilder<QuerySnapshot>(
-                        stream: productsQuery.snapshots(),
+                        stream: _firestore.collection('products').snapshots(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
                             return const Center(
@@ -210,9 +401,10 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                             );
                           }
 
-                          final allProducts = snapshot.data!.docs;
+                          var allProducts = snapshot.data!.docs;
 
-                          final products = allProducts.where((doc) {
+                          // Local search
+                          var filteredProducts = allProducts.where((doc) {
                             final data = doc.data() as Map<String, dynamic>;
                             final name = (data['name'] ?? '')
                                 .toString()
@@ -228,7 +420,9 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                                 stock.contains(searchQuery);
                           }).toList();
 
-                          if (products.isEmpty) {
+                          filteredProducts = _applyFilters(filteredProducts);
+
+                          if (filteredProducts.isEmpty) {
                             return const Center(
                               child: Text(
                                 "No products found",
@@ -253,10 +447,10 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                                   mainAxisSpacing: 12,
                                   childAspectRatio: 0.65,
                                 ),
-                            itemCount: products.length,
+                            itemCount: filteredProducts.length,
                             itemBuilder: (context, index) {
                               final product =
-                                  products[index].data()
+                                  filteredProducts[index].data()
                                       as Map<String, dynamic>;
                               final stock = product['stock'] ?? 0;
                               final imageUrl = product['imageUrl'] ?? '';
@@ -276,7 +470,6 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Image Section
                                     ClipRRect(
                                       borderRadius: const BorderRadius.vertical(
                                         top: Radius.circular(16),
@@ -334,8 +527,6 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                                         ],
                                       ),
                                     ),
-
-                                    // Text & Button Section (Tighter)
                                     Expanded(
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
@@ -442,7 +633,12 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
-                                    Colors.white.withOpacity(0.8),
+                                    const Color.fromARGB(
+                                      255,
+                                      85,
+                                      85,
+                                      85,
+                                    ).withOpacity(0.8),
                                     Colors.white.withOpacity(0.0),
                                   ],
                                 ),
