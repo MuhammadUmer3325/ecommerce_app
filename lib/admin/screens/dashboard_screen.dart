@@ -1,3 +1,4 @@
+// DashboardScreen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -281,13 +282,16 @@ class DashboardScreen extends StatelessWidget {
                       cells: [
                         DataCell(
                           Text(
-                            data['id'] ?? '',
+                            order.id.substring(
+                              0,
+                              8,
+                            ), // Show first 8 chars of ID
                             style: const TextStyle(color: AppColors.light),
                           ),
                         ),
                         DataCell(
                           Text(
-                            data['customer'] ?? '',
+                            data['userName'] ?? '',
                             style: const TextStyle(color: AppColors.light),
                           ),
                         ),
@@ -299,7 +303,7 @@ class DashboardScreen extends StatelessWidget {
                         ),
                         DataCell(
                           Text(
-                            data['amount']?.toString() ?? '',
+                            "Rs ${data['totalAmount']?.toString() ?? '0'}",
                             style: const TextStyle(color: AppColors.light),
                           ),
                         ),

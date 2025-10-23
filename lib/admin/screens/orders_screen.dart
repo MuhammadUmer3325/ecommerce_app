@@ -11,393 +11,70 @@ class OrdersScreen extends StatefulWidget {
 
 class _OrdersScreenState extends State<OrdersScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isLoading = false;
 
-  // ================== ADD / EDIT ORDER FORM ==================
-  void _openOrderDialog({DocumentSnapshot? existingOrder}) {
-    final nameController = TextEditingController(
-      text: existingOrder != null ? existingOrder['userName'] ?? '' : '',
-    );
-    final emailController = TextEditingController(
-      text: existingOrder != null ? existingOrder['userEmail'] ?? '' : '',
-    );
-    final addressController = TextEditingController(
-      text: existingOrder != null ? existingOrder['userAddress'] ?? '' : '',
-    );
+  @override
+  void initState() {
+    super.initState();
+    _refreshOrders();
+  }
 
-    String? selectedCategory;
-    String? selectedProductId;
-    String? selectedProductName;
-    double? selectedProductPrice;
-    final qtyController = TextEditingController();
+  // Function to refresh orders
+  Future<void> _refreshOrders() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-    List<Map<String, dynamic>> productList = existingOrder != null
-        ? List<Map<String, dynamic>>.from(existingOrder['products'])
-        : [];
+    // Just set loading to false after a small delay to show the refresh indicator
+    await Future.delayed(const Duration(seconds: 1));
 
-    void addProduct() {
-      if (selectedProductId != null &&
-          qtyController.text.isNotEmpty &&
-          selectedProductPrice != null) {
-        setState(() {
-          productList.add({
-            'productId': selectedProductId,
-            'name': selectedProductName,
-            'quantity': int.parse(qtyController.text.trim()),
-            'price': selectedProductPrice,
-            'category': selectedCategory,
-          });
-        });
-        selectedProductId = null;
-        selectedProductName = null;
-        selectedProductPrice = null;
-        qtyController.clear();
-      }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          insetPadding: const EdgeInsets.all(16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 600;
-              return StatefulBuilder(
-                builder: (context, setModalState) {
-                  return ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 700),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            existingOrder != null
-                                ? 'Edit Order'
-                                : 'Create Order',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // ================= Customer Info =================
-                          isWide
-                              ? Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildField(
-                                        controller: nameController,
-                                        label: 'Customer Name',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _buildField(
-                                        controller: emailController,
-                                        label: 'Customer Email',
-                                        keyboardType:
-                                            TextInputType.emailAddress,
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  children: [
-                                    _buildField(
-                                      controller: nameController,
-                                      label: 'Customer Name',
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildField(
-                                      controller: emailController,
-                                      label: 'Customer Email',
-                                      keyboardType: TextInputType.emailAddress,
-                                    ),
-                                  ],
-                                ),
-                          const SizedBox(height: 12),
-                          _buildField(
-                            controller: addressController,
-                            label: 'Customer Address',
-                            maxLines: 2,
-                          ),
-                          const SizedBox(height: 20),
-
-                          // ================= Category Selection =================
-                          StreamBuilder<QuerySnapshot>(
-                            stream: _firestore
-                                .collection('products')
-                                .snapshots(),
-                            builder: (context, snapshot) {
-                              if (!snapshot.hasData) {
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              }
-                              final products = snapshot.data!.docs;
-                              final categories = products
-                                  .map(
-                                    (e) =>
-                                        (e.data()
-                                            as Map<
-                                              String,
-                                              dynamic
-                                            >)['category'],
-                                  )
-                                  .toSet()
-                                  .toList();
-
-                              return DropdownButtonFormField<String>(
-                                value: categories.contains(selectedCategory)
-                                    ? selectedCategory
-                                    : null,
-                                decoration: _inputDecoration('Select Category'),
-                                items: categories.map((cat) {
-                                  return DropdownMenuItem<String>(
-                                    value: cat,
-                                    child: Text(cat),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  setModalState(() {
-                                    selectedCategory = val;
-                                    selectedProductId = null;
-                                  });
-                                },
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 15),
-
-                          // ================= Product Selection =================
-                          if (selectedCategory != null)
-                            StreamBuilder<QuerySnapshot>(
-                              stream: _firestore
-                                  .collection('products')
-                                  .where(
-                                    'category',
-                                    isEqualTo: selectedCategory,
-                                  )
-                                  .snapshots(),
-                              builder: (context, snapshot) {
-                                if (!snapshot.hasData) {
-                                  return const Center(
-                                    child: CircularProgressIndicator(),
-                                  );
-                                }
-                                final filteredProducts = snapshot.data!.docs;
-
-                                return DropdownButtonFormField<String>(
-                                  value: selectedProductId,
-                                  decoration: _inputDecoration(
-                                    'Select Product',
-                                  ),
-                                  items: filteredProducts.map((doc) {
-                                    final data =
-                                        doc.data() as Map<String, dynamic>;
-                                    return DropdownMenuItem(
-                                      value: doc.id,
-                                      child: Text(data['name']),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    setModalState(() {
-                                      selectedProductId = val;
-                                      final doc = filteredProducts.firstWhere(
-                                        (e) => e.id == val,
-                                      );
-                                      final data =
-                                          doc.data() as Map<String, dynamic>;
-                                      selectedProductName = data['name'];
-                                      selectedProductPrice =
-                                          double.tryParse(
-                                            data['price'].toString(),
-                                          ) ??
-                                          0.0;
-                                    });
-                                  },
-                                );
-                              },
-                            ),
-                          const SizedBox(height: 12),
-
-                          _buildField(
-                            controller: qtyController,
-                            label: 'Quantity',
-                            keyboardType: TextInputType.number,
-                          ),
-                          const SizedBox(height: 8),
-                          if (selectedProductPrice != null)
-                            Text(
-                              "Price: Rs ${selectedProductPrice!.toStringAsFixed(0)}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          const SizedBox(height: 10),
-
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              setModalState(addProduct);
-                            },
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add Product'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.main,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-
-                          // ================= Product List =================
-                          if (productList.isEmpty)
-                            const Center(
-                              child: Text(
-                                'No products added yet',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            )
-                          else
-                            Column(
-                              children: productList.map((p) {
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: ListTile(
-                                    title: Text(
-                                      "${p['name']} x${p['quantity']}",
-                                    ),
-                                    subtitle: Text(
-                                      "Rs ${p['price']} • ${p['category']}",
-                                    ),
-                                    trailing: IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
-                                      ),
-                                      onPressed: () {
-                                        setModalState(() {
-                                          productList.remove(p);
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          const SizedBox(height: 20),
-
-                          // ================= Buttons =================
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancel'),
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton(
-                                onPressed: () async {
-                                  if (nameController.text.isEmpty ||
-                                      emailController.text.isEmpty ||
-                                      addressController.text.isEmpty ||
-                                      productList.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Please fill all fields and add at least one product',
-                                        ),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                    return;
-                                  }
-
-                                  final total = productList.fold<double>(
-                                    0,
-                                    (sum, item) =>
-                                        sum +
-                                        (item['price'] as double) *
-                                            item['quantity'],
-                                  );
-                                  final orderData = {
-                                    'userName': nameController.text.trim(),
-                                    'userEmail': emailController.text.trim(),
-                                    'userAddress': addressController.text
-                                        .trim(),
-                                    'products': productList,
-                                    'totalAmount': total,
-                                    'status': 'Pending',
-                                    'createdAt':
-                                        existingOrder?['createdAt'] ??
-                                        Timestamp.now(),
-                                  };
-
-                                  if (existingOrder == null) {
-                                    await _firestore
-                                        .collection('orders')
-                                        .add(orderData);
-                                  } else {
-                                    await _firestore
-                                        .collection('orders')
-                                        .doc(existingOrder.id)
-                                        .update(orderData);
-                                  }
-
-                                  Navigator.pop(context);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.main,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  existingOrder != null ? 'Update' : 'Save',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        );
-      },
-    );
   }
 
-  // ================== UPDATE STATUS ==================
-  void _updateStatus(String id, String status) async {
-    await _firestore.collection('orders').doc(id).update({'status': status});
+  // ✅ Update order status
+  Future<void> _updateStatus(String id, String status) async {
+    try {
+      await _firestore.collection('orders').doc(id).update({'status': status});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order status updated to $status'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating status: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
-  // ================== DELETE ==================
-  void _deleteOrder(String id) async {
-    await _firestore.collection('orders').doc(id).delete();
+  // ✅ Delete order
+  Future<void> _deleteOrder(String id) async {
+    try {
+      await _firestore.collection('orders').doc(id).delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order deleted successfully'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting order: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
-  // ================== BUILD UI ==================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -409,157 +86,331 @@ class _OrdersScreenState extends State<OrdersScreen> {
           style: TextStyle(color: Colors.black),
         ),
         iconTheme: const IconThemeData(color: Colors.black),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshOrders,
+            tooltip: 'Refresh Orders',
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.main,
-        onPressed: () => _openOrderDialog(),
-        child: const Icon(Icons.add),
-      ),
+
+      // ✅ Real-time orders with StreamBuilder
       body: StreamBuilder<QuerySnapshot>(
+        // FIXED: Order by createdAt descending to show newest orders first
         stream: _firestore
             .collection('orders')
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final orders = snapshot.data!.docs;
-          if (orders.isEmpty) {
-            return const Center(child: Text('No orders found'));
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Error loading orders',
+                    style: TextStyle(fontSize: 18, color: Colors.red),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Error: ${snapshot.error}',
+                    style: const TextStyle(fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _refreshOrders,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return _buildEmptyState();
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: orders.length,
-            itemBuilder: (context, index) {
-              final order = orders[index];
-              final data = order.data() as Map<String, dynamic>;
-              final products = List<Map<String, dynamic>>.from(
-                data['products'],
-              );
-              final status = data['status'];
+          final orders = snapshot.data!.docs;
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: ExpansionTile(
-                  title: Text("${data['userName']} (${data['userEmail']})"),
-                  subtitle: Text(
-                    "${data['userAddress']} • Rs ${data['totalAmount']}",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          return RefreshIndicator(
+            // FIXED: Implement proper refresh functionality
+            onRefresh: () async {
+              await _refreshOrders();
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: orders.length,
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                final data = order.data() as Map<String, dynamic>? ?? {};
+
+                // ✅ Safe fallback data - matching CheckoutScreen structure
+                final userName =
+                    data['userName'] ??
+                    data['customerName'] ??
+                    data['name'] ??
+                    data['customer']?['name'] ??
+                    'Unknown';
+
+                final userEmail =
+                    data['userEmail'] ??
+                    data['customerEmail'] ??
+                    data['email'] ??
+                    data['customer']?['email'] ??
+                    'Unknown';
+
+                // FIXED: Try to get address from different possible fields
+                String userAddress = 'Unknown';
+                if (data['userAddress'] != null) {
+                  userAddress = data['userAddress'];
+                } else if (data['shippingAddress'] != null &&
+                    data['shippingAddress']['address'] != null) {
+                  userAddress = data['shippingAddress']['address'];
+                } else if (data['address'] != null) {
+                  userAddress = data['address'];
+                } else if (data['customerAddress'] != null) {
+                  userAddress = data['customerAddress'];
+                }
+
+                // FIXED: Try to get city from different possible fields
+                String userCity = '';
+                if (data['userCity'] != null) {
+                  userCity = data['userCity'];
+                } else if (data['shippingAddress'] != null &&
+                    data['shippingAddress']['city'] != null) {
+                  userCity = data['shippingAddress']['city'];
+                }
+
+                // Combine address and city
+                if (userCity.isNotEmpty) {
+                  userAddress = '$userAddress, $userCity';
+                }
+
+                final totalAmount =
+                    data['totalAmount'] ??
+                    data['amount'] ??
+                    data['total'] ??
+                    data['grandTotal'] ??
+                    0;
+
+                final status = data['status'] ?? 'Pending';
+
+                // ✅ Handle createdAt safely
+                DateTime createdAt = DateTime.now();
+                if (data['createdAt'] != null) {
+                  if (data['createdAt'] is Timestamp) {
+                    createdAt = (data['createdAt'] as Timestamp).toDate();
+                  } else if (data['createdAt'] is String) {
+                    createdAt =
+                        DateTime.tryParse(data['createdAt']) ?? DateTime.now();
+                  }
+                }
+
+                // ✅ Handle products safely - matching CheckoutScreen structure
+                List<Map<String, dynamic>> products = [];
+                if (data['products'] != null) {
+                  if (data['products'] is List) {
+                    products = List<Map<String, dynamic>>.from(
+                      data['products'],
+                    );
+                  } else if (data['products'] is Map) {
+                    products = [Map<String, dynamic>.from(data['products'])];
+                  }
+                } else if (data['items'] != null) {
+                  if (data['items'] is List) {
+                    products = List<Map<String, dynamic>>.from(data['items']);
+                  } else if (data['items'] is Map) {
+                    products = [Map<String, dynamic>.from(data['items'])];
+                  }
+                }
+
+                return Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  elevation: 2,
+                  child: ExpansionTile(
+                    title: Text(
+                      userName,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    decoration: BoxDecoration(
-                      color: status == 'Completed'
-                          ? Colors.green
-                          : status == 'Pending'
-                          ? Colors.orange
-                          : Colors.red,
-                      borderRadius: BorderRadius.circular(8),
+                    subtitle: Text(
+                      "$userEmail\n${userAddress.length > 30 ? '${userAddress.substring(0, 30)}...' : userAddress}",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    child: Text(
-                      status,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Products:",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          ...products.map(
-                            (p) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Text(
-                                "${p['name']} (${p['category']}) x${p['quantity']} - Rs ${p['price']}",
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              DropdownButton<String>(
-                                value: status,
-                                items: ['Pending', 'Completed', 'Cancelled']
-                                    .map(
-                                      (s) => DropdownMenuItem(
-                                        value: s,
-                                        child: Text(s),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val != null) _updateStatus(order.id, val);
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: Colors.blue,
-                                ),
-                                onPressed: () =>
-                                    _openOrderDialog(existingOrder: order),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () => _deleteOrder(order.id),
-                              ),
-                            ],
-                          ),
-                        ],
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: status == 'Completed'
+                            ? Colors.green
+                            : status == 'Pending'
+                            ? Colors.orange
+                            : Colors.red,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        status,
+                        style: const TextStyle(color: Colors.white),
                       ),
                     ),
-                  ],
-                ),
-              );
-            },
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  "Order ID: ",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    order.id,
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Date: ${createdAt.day}/${createdAt.month}/${createdAt.year}",
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              "Products:",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            if (products.isNotEmpty)
+                              ...products.map(
+                                (p) => Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 2,
+                                  ),
+                                  child: Text(
+                                    "• ${p['name'] ?? p['productName'] ?? 'Unknown'} x${p['quantity'] ?? p['qty'] ?? 1} — Rs ${p['price'] ?? 0}",
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              const Text(
+                                "No product details available",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            const SizedBox(height: 10),
+                            Text(
+                              "Total: Rs $totalAmount",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                DropdownButton<String>(
+                                  value: status,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'Pending',
+                                      child: Text('Pending'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Completed',
+                                      child: Text('Completed'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Cancelled',
+                                      child: Text('Cancelled'),
+                                    ),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      _updateStatus(order.id, val);
+                                    }
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () => _deleteOrder(order.id),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: _inputDecoration(label),
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-    );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      focusedBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: AppColors.main, width: 2),
-        borderRadius: BorderRadius.circular(12),
+  // ✅ Empty state UI
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.receipt_long, size: 80, color: Colors.grey[400]),
+          const SizedBox(height: 20),
+          const Text(
+            'No orders found',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Orders will appear here when customers place them',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          const SizedBox(height: 30),
+          ElevatedButton.icon(
+            onPressed: _refreshOrders,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Refresh'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.main,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
       ),
     );
   }

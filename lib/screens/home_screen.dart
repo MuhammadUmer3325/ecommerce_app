@@ -6,9 +6,70 @@ import 'package:laptop_harbor/core/theme/app_theme.dart';
 import 'package:laptop_harbor/screens/all_products_screen.dart';
 import 'package:laptop_harbor/screens/auth/login_screen.dart';
 import 'package:laptop_harbor/screens/auth/signup_screen.dart';
-import 'product_details_screen.dart';
+import 'package:laptop_harbor/screens/cart_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:laptop_harbor/screens/product_detail_screen.dart';
+
+// ===================== CART LOGIC =====================
+class Cart extends ChangeNotifier {
+  // Singleton instance
+  static final Cart _instance = Cart._internal();
+  factory Cart() => _instance;
+  static Cart get instance => _instance;
+
+  Cart._internal();
+
+  final Map<String, Map<String, dynamic>> _items = {};
+  final ValueNotifier<int> itemCountNotifier = ValueNotifier(0);
+
+  Map<String, Map<String, dynamic>> get items => _items;
+
+  void addItem(Map<String, dynamic> product) {
+    final productId = product['id'];
+    if (_items.containsKey(productId)) {
+      _items[productId]!['quantity']++;
+    } else {
+      _items[productId] = {...product, 'quantity': 1};
+    }
+    itemCountNotifier.value = _items.length;
+    notifyListeners();
+  }
+
+  void removeItem(String productId) {
+    _items.remove(productId);
+    itemCountNotifier.value = _items.length;
+    notifyListeners();
+  }
+
+  void updateQuantity(String productId, int quantity) {
+    if (quantity <= 0) {
+      removeItem(productId);
+    } else if (_items.containsKey(productId)) {
+      _items[productId]!['quantity'] = quantity;
+      notifyListeners();
+    }
+  }
+
+  double getTotalPrice() {
+    double total = 0.0;
+    _items.forEach((key, item) {
+      total += (item['price'] as num) * item['quantity'];
+    });
+    return total;
+  }
+
+  void clear() {
+    _items.clear();
+    itemCountNotifier.value = 0;
+    notifyListeners();
+  }
+}
+
+bool _isSearching = false;
+final TextEditingController _searchController = TextEditingController();
+
+// ===================== END OF CART LOGIC =====================
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,32 +80,41 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  User? _currentUser; // ✅ Track user manually
+  User? _currentUser;
+  bool _isSearchVisible = false;
+  final TextEditingController _searchController = TextEditingController();
+  String searchQuery = '';
 
   final List<Widget> _screens = [
     const _HomeBody(),
-    const Center(child: Text("Cart Screen")),
+    const CartScreen(),
     const Center(child: Text("Profile Screen")),
   ];
 
   @override
   void initState() {
     super.initState();
-
-    // 🔥 Auth listener — runs only once
     FirebaseAuth.instance.authStateChanges().listen((user) {
       setState(() {
         _currentUser = user;
       });
     });
-
-    // Initial value
     _currentUser = FirebaseAuth.instance.currentUser;
   }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchVisible = !_isSearchVisible;
+      if (!_isSearchVisible) {
+        _searchController.clear();
+        searchQuery = '';
+      }
     });
   }
 
@@ -71,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ===================== APP BAR =====================
+      // ================= APP BAR ================
       appBar: AppBar(
         elevation: 0,
         leading: Builder(
@@ -90,55 +160,222 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ),
-        title: Text(
-          "Laptop Harbor",
-          style: GoogleFonts.orbitron(
-            color: AppColors.dark,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
+        title: _isSearchVisible
+            ? Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.hint, width: 1),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Search products...',
+                    hintStyle: TextStyle(color: AppColors.hint),
+                    prefixIcon: const Icon(Icons.search, color: AppColors.dark),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.clear, color: AppColors.dark),
+                      onPressed: () {
+                        setState(() {
+                          _isSearchVisible = false;
+                          _searchController.clear();
+                          searchQuery = '';
+                        });
+                      },
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value.trim().toLowerCase();
+                    });
+                  },
+                ),
+              )
+            : Text(
+                "Laptop Harbor",
+                style: GoogleFonts.orbitron(
+                  color: AppColors.dark,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
         centerTitle: true,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                border: Border.all(color: AppColors.hint, width: 1),
+          // Search Icon
+          if (!_isSearchVisible)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _isSearching
+                    ? Container(
+                        key: const ValueKey('searchField'),
+                        height: 40,
+                        width: 200, // adjust based on your design
+                        decoration: BoxDecoration(
+                          color: AppColors.dark, // dark background
+                          borderRadius: BorderRadius.circular(25),
+                          border: Border.all(color: AppColors.hint, width: 1),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          style: const TextStyle(
+                            color: Colors.white,
+                          ), // white text
+                          cursorColor: Colors.white,
+                          decoration: InputDecoration(
+                            hintText: 'Search...',
+                            hintStyle: TextStyle(
+                              color: Colors.white.withOpacity(0.6),
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Colors.white,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _isSearching = false;
+                                });
+                              },
+                            ),
+                          ),
+                          onSubmitted: (value) {
+                            // handle search logic here
+                          },
+                        ),
+                      )
+                    : GestureDetector(
+                        key: const ValueKey('searchIcon'),
+                        onTap: () {
+                          setState(() {
+                            _isSearching = true;
+                          });
+                        },
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: Center(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                border: Border.all(
+                                  color: AppColors.hint,
+                                  width: 1,
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: const Icon(
+                                Icons.search,
+                                color: AppColors.dark,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
               ),
-              padding: const EdgeInsets.all(6),
-              child: const Icon(Icons.search, color: AppColors.dark),
             ),
-          ),
+
+          // Cart Icon with Badge
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                border: Border.all(color: AppColors.hint, width: 1),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedIndex = 1;
+                });
+              },
+              child: SizedBox(
+                width: 40, // Fixed width for alignment
+                height: 40,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Center(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(color: AppColors.hint, width: 1),
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: const Icon(
+                          Icons.shopping_cart,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: Cart.instance.itemCountNotifier,
+                        builder: (context, itemCount, child) {
+                          return itemCount > 0
+                              ? Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    '$itemCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                )
+                              : const SizedBox.shrink();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              padding: const EdgeInsets.all(6),
-              child: const Icon(Icons.shopping_cart, color: AppColors.dark),
             ),
           ),
         ],
       ),
 
-      // ===================== RESPONSIVE DRAWER =====================
       drawer: Drawer(
-        // Responsive width
         width: MediaQuery.of(context).size.width < 600
-            ? MediaQuery.of(context)
-                  .size
-                  .width // Full width for mobile
-            : 400, // Fixed width for web/tablet
+            ? MediaQuery.of(context).size.width
+            : 400,
         child: SafeArea(
           child: Column(
             children: [
-              // 🔙 Back button + Title Row
               Padding(
                 padding: const EdgeInsets.symmetric(
                   vertical: 16,
@@ -180,15 +417,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              // Expanded ListView for settings
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // 👤 Profile Card
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -210,24 +443,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         subtitle: Text(
-                          _currentUser != null
-                              ? "Logged in"
-                              : "Product/UI Designer",
+                          _currentUser != null ? "Logged in" : "Guest",
                         ),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => Navigator.pushNamed(context, "/profile"),
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
                     const Text(
                       "Other settings",
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 10),
-
-                    // Settings List
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -262,10 +489,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Info Section
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -287,10 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Admin Panel (if admin)
                     if (_currentUser?.email == 'admin@laptopharbor.com') ...[
                       Container(
                         decoration: BoxDecoration(
@@ -314,8 +535,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
-              // 🚪 Login/Signup or Logout at the bottom (sticky)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: _currentUser == null
@@ -370,12 +589,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-
-      // ===================== BODY =====================
       backgroundColor: Colors.white,
-      body: _screens[_selectedIndex],
-
-      // ===================== BOTTOM NAV BAR =====================
+      body: _isSearchVisible && searchQuery.isNotEmpty
+          ? _buildSearchResults()
+          : _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -404,9 +621,253 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _buildSearchResults() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('products').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No products found'));
+        }
+
+        final allProducts = snapshot.data!.docs;
+
+        // Local filtering by searchQuery
+        final products = allProducts.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final name = (data['name'] ?? '').toString().toLowerCase();
+          final brand = (data['brand'] ?? '').toString().toLowerCase();
+          final price = (data['price'] ?? '').toString();
+          final stock = (data['stock'] ?? '').toString();
+          return name.contains(searchQuery) ||
+              brand.contains(searchQuery) ||
+              price.contains(searchQuery) ||
+              stock.contains(searchQuery);
+        }).toList();
+
+        if (products.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.search_off, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                  'No products found for "$searchQuery"',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Found ${products.length} results for "$searchQuery"',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.7,
+                  ),
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final product =
+                        products[index].data() as Map<String, dynamic>;
+                    final stock = product['stock'] ?? 0;
+                    final imageUrl = product['imageUrl'] ?? '';
+                    final productId = products[index].id;
+
+                    return GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 6,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(16),
+                                  ),
+                                  child: Image.network(
+                                    imageUrl,
+                                    width: double.infinity,
+                                    height: 150,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        height: 150,
+                                        color: Colors.grey[300],
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          size: 40,
+                                          color: Colors.white,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  left: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: stock == 0
+                                          ? Colors.redAccent
+                                          : Colors.green,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      stock == 0 ? "Out of Stock" : "Sale",
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      product['name'] ?? '',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      product['brand'] ?? '',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Rs ${product['price']}",
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Center(
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: stock == 0
+                                              ? null
+                                              : () {
+                                                  final productWithId =
+                                                      Map<String, dynamic>.from(
+                                                        product,
+                                                      );
+                                                  productWithId['id'] =
+                                                      productId;
+                                                  Cart.instance.addItem(
+                                                    productWithId,
+                                                  );
+
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        '${product['name']} added to cart!',
+                                                      ),
+                                                      duration: const Duration(
+                                                        seconds: 2,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.main,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 6,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            "Add to Cart",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
-// ===================== HOME BODY =====================
 class _HomeBody extends StatelessWidget {
   const _HomeBody();
 
@@ -417,16 +878,14 @@ class _HomeBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ===================== HORIZONTAL CARDS SECTION =====================
           SizedBox(
-            height: 180, // card height
+            height: 180,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  // -------- CARD 1 --------
                   Container(
-                    width: 280, // fixed width for horizontal card
+                    width: 280,
                     margin: const EdgeInsets.only(left: 16, right: 8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
@@ -474,8 +933,6 @@ class _HomeBody extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  // -------- CARD 2 --------
                   Container(
                     width: 280,
                     margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -523,8 +980,6 @@ class _HomeBody extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  // -------- CARD 3 --------
                   Container(
                     width: 280,
                     margin: const EdgeInsets.only(left: 8, right: 16),
@@ -578,14 +1033,10 @@ class _HomeBody extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // ===================== FEATURED BRANDS SECTION =====================
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ----- TITLE -----
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 1, vertical: 12),
                 child: Text(
@@ -597,21 +1048,15 @@ class _HomeBody extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // ----- BRANDS SCROLL -----
               SizedBox(
-                height: 90, // brand card ka height
+                height: 90,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
                       const SizedBox(width: 16),
-
-                      // ----- BRAND 1: DELL -----
                       GestureDetector(
-                        onTap: () {
-                          // TODO: Dell products screen open karo
-                        },
+                        onTap: () {},
                         child: Container(
                           width: 90,
                           margin: const EdgeInsets.only(right: 12),
@@ -635,12 +1080,8 @@ class _HomeBody extends StatelessWidget {
                           ),
                         ),
                       ),
-
-                      // ----- BRAND 2: HP -----
                       GestureDetector(
-                        onTap: () {
-                          // TODO: HP products screen
-                        },
+                        onTap: () {},
                         child: Container(
                           width: 90,
                           margin: const EdgeInsets.only(right: 12),
@@ -664,12 +1105,8 @@ class _HomeBody extends StatelessWidget {
                           ),
                         ),
                       ),
-
-                      // ----- BRAND 3: LENOVO -----
                       GestureDetector(
-                        onTap: () {
-                          // TODO: Lenovo products screen
-                        },
+                        onTap: () {},
                         child: Container(
                           width: 90,
                           margin: const EdgeInsets.only(right: 12),
@@ -693,12 +1130,8 @@ class _HomeBody extends StatelessWidget {
                           ),
                         ),
                       ),
-
-                      // ----- BRAND 4: ASUS -----
                       GestureDetector(
-                        onTap: () {
-                          // TODO: Asus products screen
-                        },
+                        onTap: () {},
                         child: Container(
                           width: 90,
                           margin: const EdgeInsets.only(right: 12),
@@ -722,7 +1155,6 @@ class _HomeBody extends StatelessWidget {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 16),
                     ],
                   ),
@@ -730,8 +1162,6 @@ class _HomeBody extends StatelessWidget {
               ),
             ],
           ),
-
-          // ===================== Categories =====================
           const Text(
             "Categories",
             style: TextStyle(
@@ -754,10 +1184,7 @@ class _HomeBody extends StatelessWidget {
               ],
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // ===================== Featured Products Section =====================
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -802,7 +1229,6 @@ class _HomeBody extends StatelessWidget {
               ],
             ),
           ),
-
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('products')
@@ -812,18 +1238,13 @@ class _HomeBody extends StatelessWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(child: Text('No featured products found'));
               }
-
               final products = snapshot.data!.docs;
-
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final screenWidth = constraints.maxWidth;
-
-                  // ✅ Responsive columns based on available width
                   int crossAxisCount = 2;
                   if (screenWidth > 1200) {
                     crossAxisCount = 5;
@@ -832,13 +1253,11 @@ class _HomeBody extends StatelessWidget {
                   } else if (screenWidth > 600) {
                     crossAxisCount = 3;
                   }
-
                   const double spacing = 12;
                   final double cardWidth =
                       (screenWidth - ((crossAxisCount - 1) * spacing)) /
                       crossAxisCount;
                   final double cardHeight = cardWidth * 1.45;
-
                   return GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -858,10 +1277,22 @@ class _HomeBody extends StatelessWidget {
                           products[index].data() as Map<String, dynamic>;
                       final stock = product['stock'] ?? 0;
                       final imageUrl = product['imageUrl'] ?? '';
+                      final productId = products[index].id;
+
+                      // 创建包含ID的产品数据
+                      final productWithId = Map<String, dynamic>.from(product);
+                      productWithId['id'] = productId;
 
                       return GestureDetector(
                         onTap: () {
-                          // TODO: Navigate to Product Detail screen
+                          // 导航到产品详情页面
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ProductDetailScreen(product: productWithId),
+                            ),
+                          );
                         },
                         child: Container(
                           decoration: BoxDecoration(
@@ -878,7 +1309,6 @@ class _HomeBody extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // ====== Product Image + Badge ======
                               Stack(
                                 children: [
                                   ClipRRect(
@@ -930,8 +1360,6 @@ class _HomeBody extends StatelessWidget {
                                   ),
                                 ],
                               ),
-
-                              // ====== Product Info ======
                               Expanded(
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
@@ -976,7 +1404,25 @@ class _HomeBody extends StatelessWidget {
                                           child: ElevatedButton(
                                             onPressed: stock == 0
                                                 ? null
-                                                : () {},
+                                                : () {
+                                                    Cart.instance.addItem(
+                                                      productWithId,
+                                                    );
+
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          '${product['name']} added to cart!',
+                                                        ),
+                                                        duration:
+                                                            const Duration(
+                                                              seconds: 2,
+                                                            ),
+                                                      ),
+                                                    );
+                                                  },
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: AppColors.main,
                                               shape: RoundedRectangleBorder(
@@ -1021,7 +1467,6 @@ class _HomeBody extends StatelessWidget {
   }
 }
 
-// ===================== CATEGORY CARD =====================
 class _CategoryCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1050,116 +1495,6 @@ class _CategoryCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ===================== PRODUCT CARD =====================
-class _ProductCard extends StatelessWidget {
-  final String name;
-  final String price;
-  final IconData image;
-  final bool isSale;
-  const _ProductCard({
-    required this.name,
-    required this.price,
-    required this.image,
-    this.isSale = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProductDetailsScreen(
-              productName: name,
-              productPrice: price,
-              productImage: "assets/images/laptop.png",
-              productDescription:
-                  "This is a sample description of the $name. High performance, best for work and gaming.",
-            ),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.hint,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Stack(
-          children: [
-            // Background Image
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                image: const DecorationImage(
-                  image: AssetImage("assets/images/laptop.png"),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            // Foreground Content
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (isSale)
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 226, 36, 36),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          "SALE",
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  const SizedBox(height: 10),
-
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-
-                  Text(
-                    price,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-
-                  ElevatedButton(
-                    style: AppTheme.cartButtonStyle,
-                    onPressed: () {},
-                    child: const Text("Add to Cart"),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
