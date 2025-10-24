@@ -3,13 +3,18 @@ import 'package:laptop_harbor/admin/screens/dashboard_screen.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
+import 'package:laptop_harbor/screens/about_screen.dart';
 import 'package:laptop_harbor/screens/all_products_screen.dart';
 import 'package:laptop_harbor/screens/auth/login_screen.dart';
 import 'package:laptop_harbor/screens/auth/signup_screen.dart';
 import 'package:laptop_harbor/screens/cart_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:laptop_harbor/screens/help_screen.dart';
+import 'package:laptop_harbor/screens/my_orders_screen.dart';
 import 'package:laptop_harbor/screens/product_detail_screen.dart';
+import 'package:laptop_harbor/screens/profile_detail_screen.dart';
+import 'package:laptop_harbor/screens/track_order_screen.dart';
 
 // ===================== CART LOGIC =====================
 class Cart extends ChangeNotifier {
@@ -88,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const _HomeBody(),
     const CartScreen(),
-    const Center(child: Text("Profile Screen")),
+    const AllProductsScreen(),
   ];
 
   @override
@@ -118,161 +123,188 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Widget _buildNavIcon(IconData icon, int index) {
-    final bool isSelected = _selectedIndex == index;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: isSelected ? AppColors.main : AppColors.hint),
-        const SizedBox(height: 4),
-        if (isSelected)
-          Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.main,
-            ),
-          ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ================= APP BAR ================
-      appBar: AppBar(
-        elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                border: Border.all(color: AppColors.hint, width: 1),
-              ),
-              padding: const EdgeInsets.all(6),
-              child: const Icon(Icons.person, color: AppColors.dark),
-            ),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        title: _isSearchVisible
-            ? Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.hint, width: 1),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'Search products...',
-                    hintStyle: TextStyle(color: AppColors.hint),
-                    prefixIcon: const Icon(Icons.search, color: AppColors.dark),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.clear, color: AppColors.dark),
-                      onPressed: () {
-                        setState(() {
-                          _isSearchVisible = false;
-                          _searchController.clear();
-                          searchQuery = '';
-                        });
-                      },
+      // Only show AppBar when on home screen (index 0)
+      appBar: _selectedIndex == 0
+          ? AppBar(
+              elevation: 0,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(color: AppColors.hint, width: 1),
                     ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.all(6),
+                    child: const Icon(Icons.person, color: AppColors.dark),
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      searchQuery = value.trim().toLowerCase();
-                    });
+                  onPressed: () {
+                    Scaffold.of(context).openDrawer();
                   },
                 ),
-              )
-            : Text(
-                "Laptop Harbor",
-                style: GoogleFonts.orbitron(
-                  color: AppColors.dark,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
               ),
-        centerTitle: true,
-        actions: [
-          // Search Icon
-          if (!_isSearchVisible)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _isSearching
-                    ? Container(
-                        key: const ValueKey('searchField'),
-                        height: 40,
-                        width: 200, // adjust based on your design
-                        decoration: BoxDecoration(
-                          color: AppColors.dark, // dark background
-                          borderRadius: BorderRadius.circular(25),
-                          border: Border.all(color: AppColors.hint, width: 1),
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          style: const TextStyle(
-                            color: Colors.white,
-                          ), // white text
-                          cursorColor: Colors.white,
-                          decoration: InputDecoration(
-                            hintText: 'Search...',
-                            hintStyle: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.search,
-                              color: Colors.white,
-                            ),
-                            suffixIcon: IconButton(
-                              icon: const Icon(
-                                Icons.close,
-                                color: Colors.white,
-                              ),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _isSearching = false;
-                                });
-                              },
-                            ),
+              title: _isSearchVisible
+                  ? Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.hint, width: 1),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'Search products...',
+                          hintStyle: TextStyle(color: AppColors.hint),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: AppColors.dark,
                           ),
-                          onSubmitted: (value) {
-                            // handle search logic here
-                          },
+                          suffixIcon: IconButton(
+                            icon: const Icon(
+                              Icons.clear,
+                              color: AppColors.dark,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isSearchVisible = false;
+                                _searchController.clear();
+                                searchQuery = '';
+                              });
+                            },
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                         ),
-                      )
-                    : GestureDetector(
-                        key: const ValueKey('searchIcon'),
-                        onTap: () {
+                        onChanged: (value) {
                           setState(() {
-                            _isSearching = true;
+                            searchQuery = value.trim().toLowerCase();
                           });
                         },
-                        child: SizedBox(
-                          width: 40,
-                          height: 40,
-                          child: Center(
+                      ),
+                    )
+                  : Text(
+                      "Laptop Harbor",
+                      style: GoogleFonts.orbitron(
+                        color: AppColors.dark,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+              centerTitle: true,
+              actions: [
+                // Search Icon
+                if (!_isSearchVisible)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _isSearching
+                          ? Container(
+                              key: const ValueKey('searchField'),
+                              height: 40,
+                              width: 200, // adjust based on your design
+                              decoration: BoxDecoration(
+                                color: AppColors.dark, // dark background
+                                borderRadius: BorderRadius.circular(25),
+                                border: Border.all(
+                                  color: AppColors.hint,
+                                  width: 1,
+                                ),
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                ), // white text
+                                cursorColor: Colors.white,
+                                decoration: InputDecoration(
+                                  hintText: 'Search...',
+                                  hintStyle: TextStyle(
+                                    color: Colors.white.withOpacity(0.6),
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.search,
+                                    color: Colors.white,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _isSearching = false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                onSubmitted: (value) {
+                                  // handle search logic here
+                                },
+                              ),
+                            )
+                          : GestureDetector(
+                              key: const ValueKey('searchIcon'),
+                              onTap: () {
+                                setState(() {
+                                  _isSearching = true;
+                                });
+                              },
+                              child: SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: Center(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
+                                      border: Border.all(
+                                        color: AppColors.hint,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.all(8),
+                                    child: const Icon(
+                                      Icons.search,
+                                      color: AppColors.dark,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+
+                // Cart Icon with Badge
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedIndex = 1; // Navigate to cart
+                      });
+                    },
+                    child: SizedBox(
+                      width: 40, // Fixed width for alignment
+                      height: 40,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Center(
                             child: Container(
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
@@ -284,315 +316,342 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               padding: const EdgeInsets.all(8),
                               child: const Icon(
-                                Icons.search,
+                                Icons.shopping_cart,
                                 color: AppColors.dark,
                               ),
                             ),
                           ),
-                        ),
-                      ),
-              ),
-            ),
-
-          // Cart Icon with Badge
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 1;
-                });
-              },
-              child: SizedBox(
-                width: 40, // Fixed width for alignment
-                height: 40,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Center(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          border: Border.all(color: AppColors.hint, width: 1),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: const Icon(
-                          Icons.shopping_cart,
-                          color: AppColors.dark,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: -2,
-                      top: -2,
-                      child: ValueListenableBuilder<int>(
-                        valueListenable: Cart.instance.itemCountNotifier,
-                        builder: (context, itemCount, child) {
-                          return itemCount > 0
-                              ? Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 16,
-                                    minHeight: 16,
-                                  ),
-                                  child: Text(
-                                    '$itemCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                )
-                              : const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      drawer: Drawer(
-        width: MediaQuery.of(context).size.width < 600
-            ? MediaQuery.of(context).size.width
-            : 400,
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 16,
-                ),
-                child: Row(
-                  children: [
-                    if (MediaQuery.of(context).size.width < 600)
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.dark,
-                          border: Border.all(color: AppColors.hint, width: 1),
-                        ),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.white,
+                          Positioned(
+                            right: -2,
+                            top: -2,
+                            child: ValueListenableBuilder<int>(
+                              valueListenable: Cart.instance.itemCountNotifier,
+                              builder: (context, itemCount, child) {
+                                return itemCount > 0
+                                    ? Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 16,
+                                          minHeight: 16,
+                                        ),
+                                        child: Text(
+                                          '$itemCount',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      )
+                                    : const SizedBox.shrink();
+                              },
+                            ),
                           ),
-                          onPressed: () => Navigator.pop(context),
-                        ),
+                        ],
                       ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : null, // No AppBar for other screens
+      // ================== DRAWER START =================
+      drawer: _selectedIndex == 0
+          ? Drawer(
+              width: MediaQuery.of(context).size.width < 600
+                  ? MediaQuery.of(context).size.width
+                  : 400,
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 16,
+                      ),
+                      child: Row(
+                        children: [
+                          if (MediaQuery.of(context).size.width < 600)
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.dark,
+                                border: Border.all(
+                                  color: AppColors.hint,
+                                  width: 1,
+                                ),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.arrow_back,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                            ),
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                "Settings",
+                                style: TextStyle(
+                                  fontSize:
+                                      MediaQuery.of(context).size.width < 600
+                                      ? 22
+                                      : 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.dark,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (MediaQuery.of(context).size.width < 600)
+                            const SizedBox(width: 48),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Expanded(
-                      child: Center(
-                        child: Text(
-                          "Settings",
-                          style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width < 600
-                                ? 22
-                                : 26,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.dark,
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListTile(
+                              leading: const CircleAvatar(
+                                radius: 24,
+                                backgroundImage: AssetImage(
+                                  "assets/images/profile.png",
+                                ),
+                              ),
+                              title: Text(
+                                _currentUser?.email ?? "Guest User",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              subtitle: Text(
+                                _currentUser != null ? "Logged in" : "Guest",
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () =>
+                                  Navigator.pushNamed(context, "/profile"),
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            "My Orders",
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.shopping_bag),
+                                  title: const Text("My Orders"),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const MyOrdersScreen(),
+                                    ),
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                ListTile(
+                                  leading: const Icon(Icons.track_changes),
+                                  title: const Text("Track Order"),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const TrackOrderScreen(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            "Other settings",
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.person),
+                                  title: const Text("Profile details"),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ProfileDetailsScreen(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.info),
+                                  title: const Text("About application"),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const AboutScreen(),
+                                    ),
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                ListTile(
+                                  leading: const Icon(Icons.help),
+                                  title: const Text("Help / FAQ"),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const HelpScreen(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          if (_currentUser?.email ==
+                              'admin@laptopharbor.com') ...[
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                leading: const Icon(Icons.admin_panel_settings),
+                                title: const Text("Admin Panel"),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const DashboardScreen(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ],
                       ),
                     ),
-                    if (MediaQuery.of(context).size.width < 600)
-                      const SizedBox(width: 48),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: _currentUser == null
+                          ? Column(
+                              children: [
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.login),
+                                    label: const Text("Login"),
+                                    onPressed: () async {
+                                      final result =
+                                          await Navigator.push<User?>(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const LoginScreen(),
+                                            ),
+                                          );
+                                      if (result != null)
+                                        Navigator.pop(context);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.app_registration),
+                                    label: const Text("Signup"),
+                                    onPressed: () async {
+                                      final result =
+                                          await Navigator.push<User?>(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const SignupScreen(),
+                                            ),
+                                          );
+                                      if (result != null)
+                                        Navigator.pop(context);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            )
+                          : SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.logout),
+                                label: const Text("Logout"),
+                                onPressed: () async =>
+                                    await FirebaseAuth.instance.signOut(),
+                              ),
+                            ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          radius: 24,
-                          backgroundImage: AssetImage(
-                            "assets/images/profile.png",
-                          ),
-                        ),
-                        title: Text(
-                          _currentUser?.email ?? "Guest User",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        subtitle: Text(
-                          _currentUser != null ? "Logged in" : "Guest",
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.pushNamed(context, "/profile"),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      "Other settings",
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          const ListTile(
-                            leading: Icon(Icons.person),
-                            title: Text("Profile details"),
-                            trailing: Icon(Icons.chevron_right),
-                          ),
-                          const Divider(height: 1),
-                          const ListTile(
-                            leading: Icon(Icons.lock),
-                            title: Text("Password"),
-                            trailing: Icon(Icons.chevron_right),
-                          ),
-                          const Divider(height: 1),
-                          const ListTile(
-                            leading: Icon(Icons.notifications),
-                            title: Text("Notifications"),
-                            trailing: Icon(Icons.chevron_right),
-                          ),
-                          const Divider(height: 1),
-                          SwitchListTile(
-                            secondary: const Icon(Icons.dark_mode),
-                            title: const Text("Dark mode"),
-                            value: false,
-                            onChanged: (val) {},
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: const [
-                          ListTile(
-                            leading: Icon(Icons.info),
-                            title: Text("About application"),
-                            trailing: Icon(Icons.chevron_right),
-                          ),
-                          Divider(height: 1),
-                          ListTile(
-                            leading: Icon(Icons.help),
-                            title: Text("Help / FAQ"),
-                            trailing: Icon(Icons.chevron_right),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    if (_currentUser?.email == 'admin@laptopharbor.com') ...[
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          leading: const Icon(Icons.admin_panel_settings),
-                          title: const Text("Admin Panel"),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const DashboardScreen(),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: _currentUser == null
-                    ? Column(
-                        children: [
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.login),
-                              label: const Text("Login"),
-                              onPressed: () async {
-                                final result = await Navigator.push<User?>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const LoginScreen(),
-                                  ),
-                                );
-                                if (result != null) Navigator.pop(context);
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.app_registration),
-                              label: const Text("Signup"),
-                              onPressed: () async {
-                                final result = await Navigator.push<User?>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const SignupScreen(),
-                                  ),
-                                );
-                                if (result != null) Navigator.pop(context);
-                              },
-                            ),
-                          ),
-                        ],
-                      )
-                    : SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.logout),
-                          label: const Text("Logout"),
-                          onPressed: () async =>
-                              await FirebaseAuth.instance.signOut(),
-                        ),
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            )
+          // ================== DRAWER END =================
+          : null, // No drawer for other screens
       backgroundColor: Colors.white,
       body: _isSearchVisible && searchQuery.isNotEmpty
           ? _buildSearchResults()
           : _screens[_selectedIndex],
+
+      // ======== Bottom nav =========
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -605,17 +664,17 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
-            label: "",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border),
-            activeIcon: Icon(Icons.favorite),
-            label: "",
+            label: "Home",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart_outlined),
             activeIcon: Icon(Icons.shopping_cart),
-            label: "",
+            label: "Cart",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.grid_view_outlined),
+            activeIcon: Icon(Icons.grid_view),
+            label: "All Products",
           ),
         ],
       ),

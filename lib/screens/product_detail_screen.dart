@@ -1261,10 +1261,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                     ),
                                   ],
                                 ),
-                                child: ElevatedButton.icon(
+                                child: ElevatedButton(
                                   onPressed: _buyNow,
-                                  icon: Icon(Icons.flash_on, size: iconSize),
-                                  label: FittedBox(
+                                  child: FittedBox(
                                     fit: BoxFit.scaleDown,
                                     child: Text(
                                       "BUY NOW",

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
@@ -6,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+import 'package:laptop_harbor/screens/track_order_screen.dart';
 
 // =============== CLASS DECLARATION AND STATE VARIABLES ===============
 class CheckoutScreen extends StatefulWidget {
@@ -26,6 +29,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _paymentMethod = 'Cash on Delivery';
   bool _isLoading = false;
   bool _orderPlaced = false;
+  String? _orderId; // Store the order ID
 
   User? _currentUser;
   String? _userName;
@@ -81,6 +85,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       }
     }
+  }
+
+  // =============== COPY ORDER ID FUNCTION ===============
+  void _copyOrderId(String orderId) {
+    Clipboard.setData(ClipboardData(text: orderId));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Order ID copied to clipboard!"),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   // =============== EMAIL SENDING FUNCTION ===============
@@ -237,6 +253,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
+        // Store the order ID
+        final orderId = orderRef.id;
+        setState(() {
+          _orderId = orderId;
+        });
+
         // Check if user document exists, if not create it
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('users')
@@ -275,7 +297,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         for (var productId in cartItems.keys) {
           final item = cartItems[productId]!;
           await FirebaseFirestore.instance.collection('order_items').add({
-            'orderId': orderRef.id,
+            'orderId': orderId,
             'userId': _currentUser!.uid,
             'productId': productId,
             'productName': item['name'],
@@ -288,7 +310,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
 
         // 👇 SEND EMAIL NOTIFICATION
-        await _sendOrderConfirmationEmail(orderRef.id, total);
+        await _sendOrderConfirmationEmail(orderId, total);
 
         // Clear cart
         Cart.instance.clear();
@@ -314,18 +336,56 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   style: TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  "Order ID: ${orderRef.id}",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.main,
+                // Order ID with copy button
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Order ID: $orderId",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.main,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _copyOrderId(orderId),
+                        icon: const Icon(Icons.copy, size: 18),
+                        tooltip: 'Copy Order ID',
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   "A confirmation email has been sent to your registered email address.",
                   style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                // Track My Order Button
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TrackOrderScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.main,
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(double.infinity, 40),
+                  ),
+                  child: Text('Track My Order'),
                 ),
               ],
             ),
@@ -423,20 +483,82 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             )
           : _orderPlaced
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green, size: 100),
-                  SizedBox(height: 16),
-                  Text(
+                  const Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 100,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
                     "Order Placed Successfully!",
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 8),
-                  Text(
+                  const SizedBox(height: 8),
+                  const Text(
                     "Thank you for your purchase",
                     style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 24),
+                  // Order ID with copy button
+                  if (_orderId != null)
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Order ID: $_orderId",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.main,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _copyOrderId(_orderId!),
+                            icon: const Icon(Icons.copy, size: 18),
+                            tooltip: 'Copy Order ID',
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                  // Track My Order Button
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TrackOrderScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.main,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: const Text('Track My Order'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
+                    child: const Text("Continue Shopping"),
                   ),
                 ],
               ),

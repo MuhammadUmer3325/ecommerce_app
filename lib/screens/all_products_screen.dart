@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
+import 'package:laptop_harbor/screens/cart_screen.dart';
 import 'package:laptop_harbor/screens/product_detail_screen.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -22,7 +24,7 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
   String selectedBrand = '';
   String selectedCategory = '';
   double _topFadeOpacity = 0.0;
-  int _selectedIndex = 0;
+  int _selectedIndex = 2; // Set to 2 for All Products tab
 
   RangeValues priceRange = const RangeValues(0, 100000);
   double minPrice = 0;
@@ -99,6 +101,25 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
     setState(() {
       _selectedIndex = index;
     });
+
+    // Navigate to different screens based on index
+    switch (index) {
+      case 0: // Home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+        break;
+      case 1: // Cart
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const CartScreen()),
+        );
+        break;
+      case 2: // All Products (already here)
+        // No need to navigate as we're already on this screen
+        break;
+    }
   }
 
   // ===================== FILTER FUNCTION =====================
@@ -162,222 +183,204 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: Text(
+          "All Products",
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        iconTheme: IconThemeData(color: AppColors.dark),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+            );
+          },
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            // ===================== TOP APP BAR =====================
+            // ===================== SEARCH BAR =====================
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               color: Colors.grey[200],
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(50),
+                  border: Border.all(color: Colors.grey.shade400),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) {
+                    setState(() {
+                      searchQuery = val.trim().toLowerCase();
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    hintText: "Search for laptops, brands...",
+                    hintStyle: TextStyle(color: Colors.black54, fontSize: 14),
+                    prefixIcon: Icon(Icons.search, color: Colors.grey),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    fillColor: Colors.transparent,
+                    filled: true,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // ===================== FILTER BUTTONS =====================
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      // Back Button
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.main,
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const HomeScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.arrow_back),
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
+                  SizedBox(
+                    height: 40,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: filters.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final filter = filters[index];
+                        final isSelected = selectedFilter == filter;
 
-                      // Search Bar
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(50),
-                            border: Border.all(color: Colors.grey.shade400),
+                        return ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedFilter = isSelected ? '' : filter;
+                              selectedBrand = '';
+                              selectedCategory = '';
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isSelected
+                                ? AppColors.main
+                                : Colors.white,
+                            foregroundColor: isSelected
+                                ? Colors.white
+                                : Colors.black87,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            elevation: 0,
                           ),
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: (val) {
+                          child: Text(
+                            filter,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // ===================== FILTER CONTENT LINE =====================
+                  if (selectedFilter == 'Brand') ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 36,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: brands.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final brand = brands[index];
+                          final isActive = selectedBrand == brand;
+                          return ChoiceChip(
+                            label: Text(brand),
+                            selected: isActive,
+                            selectedColor: AppColors.main,
+                            labelStyle: TextStyle(
+                              color: isActive ? Colors.white : Colors.black,
+                            ),
+                            onSelected: (_) {
                               setState(() {
-                                searchQuery = val.trim().toLowerCase();
+                                selectedBrand = isActive ? '' : brand;
                               });
                             },
-                            decoration: const InputDecoration(
-                              hintText: "Search for laptops, brands...",
-                              hintStyle: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 14,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: Colors.grey,
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
-                              fillColor: Colors.transparent,
-                              filled: true,
-                            ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
+                    ),
+                  ],
 
-                  // ===================== FILTER BUTTONS =====================
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 40,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: filters.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (context, index) {
-                            final filter = filters[index];
-                            final isSelected = selectedFilter == filter;
+                  if (selectedFilter == 'Category') ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 36,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: categories.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final category = categories[index];
+                          final isActive = selectedCategory == category;
+                          return ChoiceChip(
+                            label: Text(category),
+                            selected: isActive,
+                            selectedColor: AppColors.main,
+                            labelStyle: TextStyle(
+                              color: isActive ? Colors.white : Colors.black,
+                            ),
+                            onSelected: (_) {
+                              setState(() {
+                                selectedCategory = isActive ? '' : category;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
 
-                            return ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  selectedFilter = isSelected ? '' : filter;
-                                  selectedBrand = '';
-                                  selectedCategory = '';
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isSelected
-                                    ? AppColors.main
-                                    : Colors.white,
-                                foregroundColor: isSelected
-                                    ? Colors.white
-                                    : Colors.black87,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  side: BorderSide(color: Colors.grey.shade300),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 6,
-                                ),
-                                elevation: 0,
-                              ),
-                              child: Text(
-                                filter,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            );
+                  // ===================== PRICE RANGE SLIDER =====================
+                  if (selectedFilter == 'Price Range') ...[
+                    const SizedBox(height: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RangeSlider(
+                          min: minPrice,
+                          max: maxPrice,
+                          values: priceRange,
+                          labels: RangeLabels(
+                            'Rs ${priceRange.start.toInt()}',
+                            'Rs ${priceRange.end.toInt()}',
+                          ),
+                          onChanged: (RangeValues values) {
+                            setState(() {
+                              priceRange = values;
+                            });
                           },
                         ),
-                      ),
-
-                      // ===================== FILTER CONTENT LINE =====================
-                      if (selectedFilter == 'Brand') ...[
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: 36,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: brands.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(width: 8),
-                            itemBuilder: (context, index) {
-                              final brand = brands[index];
-                              final isActive = selectedBrand == brand;
-                              return ChoiceChip(
-                                label: Text(brand),
-                                selected: isActive,
-                                selectedColor: AppColors.main,
-                                labelStyle: TextStyle(
-                                  color: isActive ? Colors.white : Colors.black,
-                                ),
-                                onSelected: (_) {
-                                  setState(() {
-                                    selectedBrand = isActive ? '' : brand;
-                                  });
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-
-                      if (selectedFilter == 'Category') ...[
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: 36,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: categories.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(width: 8),
-                            itemBuilder: (context, index) {
-                              final category = categories[index];
-                              final isActive = selectedCategory == category;
-                              return ChoiceChip(
-                                label: Text(category),
-                                selected: isActive,
-                                selectedColor: AppColors.main,
-                                labelStyle: TextStyle(
-                                  color: isActive ? Colors.white : Colors.black,
-                                ),
-                                onSelected: (_) {
-                                  setState(() {
-                                    selectedCategory = isActive ? '' : category;
-                                  });
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-
-                      // ===================== PRICE RANGE SLIDER =====================
-                      if (selectedFilter == 'Price Range') ...[
-                        const SizedBox(height: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            RangeSlider(
-                              min: minPrice,
-                              max: maxPrice,
-                              values: priceRange,
-                              labels: RangeLabels(
-                                'Rs ${priceRange.start.toInt()}',
-                                'Rs ${priceRange.end.toInt()}',
-                              ),
-                              onChanged: (RangeValues values) {
-                                setState(() {
-                                  priceRange = values;
-                                });
-                              },
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('Min: Rs ${priceRange.start.toInt()}'),
-                                Text('Max: Rs ${priceRange.end.toInt()}'),
-                              ],
-                            ),
+                            Text('Min: Rs ${priceRange.start.toInt()}'),
+                            Text('Max: Rs ${priceRange.end.toInt()}'),
                           ],
                         ),
                       ],
-                    ],
-                  ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -455,15 +458,22 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                                       as Map<String, dynamic>;
                               final stock = product['stock'] ?? 0;
                               final imageUrl = product['imageUrl'] ?? '';
+                              final productId = filteredProducts[index].id;
 
-                              // 👇 GestureDetector added here
+                              // Create product with ID for cart functionality
+                              final productWithId = Map<String, dynamic>.from(
+                                product,
+                              );
+                              productWithId['id'] = productId;
+
                               return GestureDetector(
                                 onTap: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                          ProductDetailScreen(product: product),
+                                      builder: (context) => ProductDetailScreen(
+                                        product: productWithId,
+                                      ),
                                     ),
                                   );
                                 },
@@ -596,7 +606,25 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                                                 child: ElevatedButton(
                                                   onPressed: stock == 0
                                                       ? null
-                                                      : () {},
+                                                      : () {
+                                                          // Add to cart functionality
+                                                          Cart.instance.addItem(
+                                                            productWithId,
+                                                          );
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            SnackBar(
+                                                              content: Text(
+                                                                "${product['name']} added to cart",
+                                                              ),
+                                                              duration:
+                                                                  const Duration(
+                                                                    seconds: 2,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
                                                   style: ElevatedButton.styleFrom(
                                                     backgroundColor:
                                                         AppColors.main,
@@ -673,33 +701,37 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
           ],
         ),
       ),
+      // bottomNavigationBar: BottomNavigationBar(
+      //   currentIndex: _selectedIndex,
+      //   onTap: _onItemTapped,
+      //   type: BottomNavigationBarType.fixed,
+      //   selectedItemColor: AppColors.main,
+      //   unselectedItemColor: AppColors.hint,
+      //   showSelectedLabels: false,
+      //   showUnselectedLabels: false,
+      //   items: const [
+      //     // 🏠 Home - Left
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.home_outlined),
+      //       activeIcon: Icon(Icons.home),
+      //       label: "",
+      //     ),
 
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.main,
-        unselectedItemColor: AppColors.hint,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: "",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border),
-            activeIcon: Icon(Icons.favorite),
-            label: "",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart_outlined),
-            activeIcon: Icon(Icons.shopping_cart),
-            label: "",
-          ),
-        ],
-      ),
+      //     // 🛒 Cart - Center
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.shopping_cart_outlined),
+      //       activeIcon: Icon(Icons.shopping_cart),
+      //       label: "",
+      //     ),
+
+      //     // 📦 All Products - Right
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.inventory_2_outlined),
+      //       activeIcon: Icon(Icons.inventory_2),
+      //       label: "",
+      //     ),
+      //   ],
+      // ),
     );
   }
 }

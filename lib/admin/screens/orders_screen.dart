@@ -75,6 +75,28 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  // Get status color based on status value
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Pending':
+        return Colors.orange;
+      case 'Processing':
+        return Colors.blue;
+      case 'Shipped':
+        return Colors.purple;
+      case 'Out for Delivery':
+        return Colors.indigo;
+      case 'Delivered':
+        return Colors.green;
+      case 'Completed':
+        return Colors.green;
+      case 'Cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -250,11 +272,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: status == 'Completed'
-                            ? Colors.green
-                            : status == 'Pending'
-                            ? Colors.orange
-                            : Colors.red,
+                        color: _getStatusColor(status),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -340,6 +358,22 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                     DropdownMenuItem(
                                       value: 'Pending',
                                       child: Text('Pending'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Processing',
+                                      child: Text('Processing'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Shipped',
+                                      child: Text('Shipped'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Out for Delivery',
+                                      child: Text('Out for Delivery'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Delivered',
+                                      child: Text('Delivered'),
                                     ),
                                     DropdownMenuItem(
                                       value: 'Completed',

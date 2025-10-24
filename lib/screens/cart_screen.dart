@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
-import 'package:laptop_harbor/screens/checkout_screen.dart'; // Add this import
+import 'package:laptop_harbor/screens/checkout_screen.dart';
+import 'package:laptop_harbor/screens/all_products_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -14,6 +16,7 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   // Create a local cart instance to ensure proper state management
   late Cart _cart;
+  int _selectedIndex = 1; // Set to 1 for Cart tab
 
   @override
   void initState() {
@@ -37,6 +40,31 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    // Navigate to different screens based on index
+    switch (index) {
+      case 0: // Home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+        break;
+      case 1: // Cart (already here)
+        // No need to navigate as we're already on this screen
+        break;
+      case 2: // All Products
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AllProductsScreen()),
+        );
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartItems = _cart.items;
@@ -49,7 +77,11 @@ class _CartScreenState extends State<CartScreen> {
       appBar: AppBar(
         title: Text(
           "My Cart",
-          style: TextStyle(color: AppColors.dark, fontWeight: FontWeight.bold),
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: AppColors.dark),
@@ -476,7 +508,6 @@ class _CartScreenState extends State<CartScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          // FIXED: Navigate to actual CheckoutScreen widget
                           onPressed: () {
                             Navigator.push(
                               context,
@@ -507,6 +538,34 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ],
             ),
+
+      // // ======== Bottom nav =========
+      // bottomNavigationBar: BottomNavigationBar(
+      //   currentIndex: _selectedIndex,
+      //   onTap: _onItemTapped,
+      //   type: BottomNavigationBarType.fixed,
+      //   selectedItemColor: AppColors.main,
+      //   unselectedItemColor: AppColors.hint,
+      //   showSelectedLabels: false,
+      //   showUnselectedLabels: false,
+      //   items: const [
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.home_outlined),
+      //       activeIcon: Icon(Icons.home),
+      //       label: "Home",
+      //     ),
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.shopping_cart_outlined),
+      //       activeIcon: Icon(Icons.shopping_cart),
+      //       label: "Cart",
+      //     ),
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.grid_view_outlined),
+      //       activeIcon: Icon(Icons.grid_view),
+      //       label: "All Products",
+      //     ),
+      //   ],
+      // ),
     );
   }
 }
