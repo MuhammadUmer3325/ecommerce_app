@@ -15,6 +15,7 @@ import 'package:laptop_harbor/screens/my_orders_screen.dart';
 import 'package:laptop_harbor/screens/product_detail_screen.dart';
 import 'package:laptop_harbor/screens/profile_detail_screen.dart';
 import 'package:laptop_harbor/screens/track_order_screen.dart';
+import 'dart:async';
 
 // ===================== CART LOGIC =====================
 class Cart extends ChangeNotifier {
@@ -71,9 +72,6 @@ class Cart extends ChangeNotifier {
   }
 }
 
-bool _isSearching = false;
-final TextEditingController _searchController = TextEditingController();
-
 // ===================== END OF CART LOGIC =====================
 
 class HomeScreen extends StatefulWidget {
@@ -89,11 +87,17 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSearchVisible = false;
   final TextEditingController _searchController = TextEditingController();
   String searchQuery = '';
+  String _selectedBrand = ''; // Added to track selected brand
+  String _selectedCategory = ''; // Added to track selected category
 
-  final List<Widget> _screens = [
+  // Changed to a getter to pass selectedBrand and selectedCategory to AllProductsScreen
+  List<Widget> get _screens => [
     const _HomeBody(),
     const CartScreen(),
-    const AllProductsScreen(),
+    AllProductsScreen(
+      initialBrand: _selectedBrand,
+      initialCategory: _selectedCategory,
+    ),
   ];
 
   @override
@@ -110,6 +114,29 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      // Reset selected brand and category when navigating to tabs other than All Products
+      if (index != 2) {
+        _selectedBrand = '';
+        _selectedCategory = '';
+      }
+    });
+  }
+
+  // New method to navigate to brand products
+  void _navigateToBrandProducts(String brand) {
+    setState(() {
+      _selectedBrand = brand;
+      _selectedCategory = '';
+      _selectedIndex = 2; // AllProductsScreen ka index
+    });
+  }
+
+  // New method to navigate to category products
+  void _navigateToCategoryProducts(String category) {
+    setState(() {
+      _selectedCategory = category;
+      _selectedBrand = '';
+      _selectedIndex = 2; // AllProductsScreen ka index
     });
   }
 
@@ -130,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: _selectedIndex == 0
           ? AppBar(
               elevation: 0,
+              backgroundColor: Colors.transparent,
               leading: Builder(
                 builder: (context) => IconButton(
                   icon: Container(
@@ -151,18 +179,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: 40,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(
+                          25,
+                        ), // ✅ Fully rounded
                         border: Border.all(color: AppColors.hint, width: 1),
                       ),
                       child: TextField(
                         controller: _searchController,
                         autofocus: true,
+                        style: const TextStyle(
+                          color: AppColors.dark, // ✅ Text color dark
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Search products...',
                           hintStyle: TextStyle(color: AppColors.hint),
                           prefixIcon: const Icon(
                             Icons.search,
-                            color: AppColors.dark,
+                            color: AppColors.dark, // ✅ Icon dark
                           ),
                           suffixIcon: IconButton(
                             icon: const Icon(
@@ -177,7 +210,22 @@ class _HomeScreenState extends State<HomeScreen> {
                               });
                             },
                           ),
-                          border: InputBorder.none,
+                          filled: true,
+                          fillColor: Colors.white, // ✅ White background
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(25),
+                            borderSide: BorderSide(
+                              color: AppColors.hint,
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(25),
+                            borderSide: BorderSide(
+                              color: AppColors.hint,
+                              width: 1,
+                            ),
+                          ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
@@ -204,88 +252,33 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (!_isSearchVisible)
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _isSearching
-                          ? Container(
-                              key: const ValueKey('searchField'),
-                              height: 40,
-                              width: 200, // adjust based on your design
-                              decoration: BoxDecoration(
-                                color: AppColors.dark, // dark background
-                                borderRadius: BorderRadius.circular(25),
-                                border: Border.all(
-                                  color: AppColors.hint,
-                                  width: 1,
-                                ),
-                              ),
-                              child: TextField(
-                                controller: _searchController,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                ), // white text
-                                cursorColor: Colors.white,
-                                decoration: InputDecoration(
-                                  hintText: 'Search...',
-                                  hintStyle: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
-                                  ),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  prefixIcon: const Icon(
-                                    Icons.search,
-                                    color: Colors.white,
-                                  ),
-                                  suffixIcon: IconButton(
-                                    icon: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                    ),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {
-                                        _isSearching = false;
-                                      });
-                                    },
-                                  ),
-                                ),
-                                onSubmitted: (value) {
-                                  // handle search logic here
-                                },
-                              ),
-                            )
-                          : GestureDetector(
-                              key: const ValueKey('searchIcon'),
-                              onTap: () {
-                                setState(() {
-                                  _isSearching = true;
-                                });
-                              },
-                              child: SizedBox(
-                                width: 40,
-                                height: 40,
-                                child: Center(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white,
-                                      border: Border.all(
-                                        color: AppColors.hint,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.all(8),
-                                    child: const Icon(
-                                      Icons.search,
-                                      color: AppColors.dark,
-                                    ),
-                                  ),
-                                ),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isSearchVisible = true;
+                        });
+                      },
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Center(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              border: Border.all(
+                                color: AppColors.hint,
+                                width: 1,
                               ),
                             ),
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(
+                              Icons.search,
+                              color: AppColors.dark,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
 
@@ -299,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       });
                     },
                     child: SizedBox(
-                      width: 40, // Fixed width for alignment
+                      width: 40,
                       height: 40,
                       child: Stack(
                         clipBehavior: Clip.none,
@@ -927,8 +920,85 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _HomeBody extends StatelessWidget {
+class _HomeBody extends StatefulWidget {
   const _HomeBody();
+
+  @override
+  State<_HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<_HomeBody> {
+  final PageController _pageController = PageController(
+    viewportFraction: 0.85, // Show part of previous/next page
+    initialPage: 1, // Start with the first real item (not the clone)
+  );
+  int _currentPage = 0; // Track the current page (0, 1, or 2)
+  Timer? _timer;
+  bool _isAutoScrolling = true;
+  bool _isUserScrolling = false; // Track if user is manually scrolling
+
+  // Banner data
+  final List<Map<String, String>> _bannerData = [
+    {
+      'image': "assets/images/gaming_laptop_banner.png",
+      'title': "Gaming Laptops",
+      'subtitle': "High performance machines",
+    },
+    {
+      'image': "assets/images/ultrabook_banner.png",
+      'title': "Ultrabooks",
+      'subtitle': "Lightweight & portable",
+    },
+    {
+      'image': "assets/images/business_laptop_banner.png",
+      'title': "Business Laptops",
+      'subtitle': "Reliable for office work",
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-scroll every 4 seconds
+    _timer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
+      if (_isAutoScrolling && _pageController.hasClients && !_isUserScrolling) {
+        _nextPage();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _nextPage() {
+    if (_currentPage < 2) {
+      _currentPage++;
+    } else {
+      _currentPage = 0;
+    }
+    _pageController.animateToPage(
+      _currentPage + 1, // +1 because of the clone at the beginning
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _previousPage() {
+    if (_currentPage > 0) {
+      _currentPage--;
+    } else {
+      _currentPage = 2;
+    }
+    _pageController.animateToPage(
+      _currentPage + 1, // +1 because of the clone at the beginning
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -937,68 +1007,90 @@ class _HomeBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Banner section with infinite PageView
           SizedBox(
             height: 180,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  Container(
-                    width: 280,
-                    margin: const EdgeInsets.only(left: 16, right: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      image: const DecorationImage(
-                        image: AssetImage(
-                          "assets/images/gaming_laptop_banner.png",
-                        ),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.black.withOpacity(0.4),
-                            Colors.transparent,
-                          ],
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      alignment: Alignment.bottomLeft,
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "Gaming Laptops",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            "High performance machines",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: 280,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (ScrollNotification notification) {
+                if (notification is ScrollUpdateNotification) {
+                  // User is manually scrolling
+                  _isUserScrolling = true;
+
+                  // Reset the auto-scroll timer when user stops scrolling
+                  _timer?.cancel();
+                  _timer = Timer.periodic(const Duration(seconds: 4), (
+                    Timer timer,
+                  ) {
+                    if (_isAutoScrolling &&
+                        _pageController.hasClients &&
+                        !_isUserScrolling) {
+                      _nextPage();
+                    }
+                  });
+
+                  // Reset user scrolling flag after a delay
+                  Timer(const Duration(milliseconds: 500), () {
+                    _isUserScrolling = false;
+                  });
+
+                  // Handle page changes
+                  if (_pageController.page == 0) {
+                    // We're at the clone of the last item, jump to the real last item
+                    _pageController.jumpToPage(3);
+                    _currentPage = 2;
+                  } else if (_pageController.page == 4) {
+                    // We're at the clone of the first item, jump to the real first item
+                    _pageController.jumpToPage(1);
+                    _currentPage = 0;
+                  } else {
+                    // Update current page based on the page controller
+                    _currentPage = (_pageController.page! - 1).round();
+                  }
+                }
+                return false;
+              },
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: (int page) {
+                  // This is called when the user manually changes the page
+                  if (page == 0) {
+                    // We're at the clone of the last item
+                    setState(() {
+                      _currentPage = 2;
+                    });
+                  } else if (page == 4) {
+                    // We're at the clone of the first item
+                    setState(() {
+                      _currentPage = 0;
+                    });
+                  } else {
+                    // Update current page based on the page controller
+                    setState(() {
+                      _currentPage = page - 1;
+                    });
+                  }
+                },
+                itemCount: 5, // 3 real items + 2 clones for infinite scrolling
+                itemBuilder: (context, index) {
+                  // Get the actual banner index (0, 1, or 2)
+                  int bannerIndex = index;
+                  if (index == 0) {
+                    // First clone - show the last banner
+                    bannerIndex = 2;
+                  } else if (index == 4) {
+                    // Last clone - show the first banner
+                    bannerIndex = 0;
+                  } else {
+                    // Real banner
+                    bannerIndex = index - 1;
+                  }
+
+                  return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      image: const DecorationImage(
-                        image: AssetImage("assets/images/ultrabook_banner.png"),
+                      image: DecorationImage(
+                        image: AssetImage(_bannerData[bannerIndex]['image']!),
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -1016,21 +1108,21 @@ class _HomeBody extends StatelessWidget {
                       ),
                       padding: const EdgeInsets.all(16),
                       alignment: Alignment.bottomLeft,
-                      child: const Column(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            "Ultrabooks",
-                            style: TextStyle(
+                            _bannerData[bannerIndex]['title']!,
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                           ),
                           Text(
-                            "Lightweight & portable",
-                            style: TextStyle(
+                            _bannerData[bannerIndex]['subtitle']!,
+                            style: const TextStyle(
                               fontSize: 14,
                               color: Colors.white70,
                             ),
@@ -1038,68 +1130,39 @@ class _HomeBody extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ),
-                  Container(
-                    width: 280,
-                    margin: const EdgeInsets.only(left: 8, right: 16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      image: const DecorationImage(
-                        image: AssetImage(
-                          "assets/images/business_laptop_banner.png",
-                        ),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.black.withOpacity(0.4),
-                            Colors.transparent,
-                          ],
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      alignment: Alignment.bottomLeft,
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "Business Laptops",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            "Reliable for office work",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
+          // Page indicators (dots)
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (index) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 8,
+                width: _currentPage == index ? 24 : 8,
+                decoration: BoxDecoration(
+                  color: _currentPage == index
+                      ? AppColors.main
+                      : Colors.grey.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              );
+            }),
+          ),
           const SizedBox(height: 24),
+          // ====================== TOP BRANDS ======================
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 1, vertical: 12),
                 child: Text(
-                  "Featured Brands",
+                  "Top Brands",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -1115,7 +1178,12 @@ class _HomeBody extends StatelessWidget {
                     children: [
                       const SizedBox(width: 16),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          // Use the new method instead of Navigator.push
+                          final homeScreenState = context
+                              .findAncestorStateOfType<_HomeScreenState>();
+                          homeScreenState?._navigateToBrandProducts("Dell");
+                        },
                         child: Container(
                           width: 90,
                           margin: const EdgeInsets.only(right: 12),
@@ -1140,7 +1208,12 @@ class _HomeBody extends StatelessWidget {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          // Use the new method instead of Navigator.push
+                          final homeScreenState = context
+                              .findAncestorStateOfType<_HomeScreenState>();
+                          homeScreenState?._navigateToBrandProducts("HP");
+                        },
                         child: Container(
                           width: 90,
                           margin: const EdgeInsets.only(right: 12),
@@ -1165,7 +1238,12 @@ class _HomeBody extends StatelessWidget {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          // Use the new method instead of Navigator.push
+                          final homeScreenState = context
+                              .findAncestorStateOfType<_HomeScreenState>();
+                          homeScreenState?._navigateToBrandProducts("Lenovo");
+                        },
                         child: Container(
                           width: 90,
                           margin: const EdgeInsets.only(right: 12),
@@ -1190,7 +1268,12 @@ class _HomeBody extends StatelessWidget {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          // Use the new method instead of Navigator.push
+                          final homeScreenState = context
+                              .findAncestorStateOfType<_HomeScreenState>();
+                          homeScreenState?._navigateToBrandProducts("Asus");
+                        },
                         child: Container(
                           width: 90,
                           margin: const EdgeInsets.only(right: 12),
@@ -1221,29 +1304,90 @@ class _HomeBody extends StatelessWidget {
               ),
             ],
           ),
+          // ====================== TOP BRANDS END ======================
+
+          // ======================= CATEGORIES =======================
           const Text(
-            "Categories",
+            "Laptop Categories",
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.main,
+              color: AppColors.dark,
             ),
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 90,
+            height: 90, // Reduced from 120 to 90
             child: ListView(
               scrollDirection: Axis.horizontal,
-              children: const [
-                _CategoryCard(icon: Icons.phone_iphone, label: "Mobiles"),
-                _CategoryCard(icon: Icons.laptop, label: "Laptops"),
-                _CategoryCard(icon: Icons.watch, label: "Watches"),
-                _CategoryCard(icon: Icons.chair, label: "Furniture"),
-                _CategoryCard(icon: Icons.sports_soccer, label: "Sports"),
+              children: [
+                _LaptopCategoryCard(
+                  icon: Icons.sports_esports,
+                  label: "Gaming",
+                  color: Color(0xFF6A11CB),
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF6A11CB), Color(0xFF2575FC)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  onTap: () {
+                    final homeScreenState = context
+                        .findAncestorStateOfType<_HomeScreenState>();
+                    homeScreenState?._navigateToCategoryProducts("Gaming");
+                  },
+                ),
+                _LaptopCategoryCard(
+                  icon: Icons.business_center,
+                  label: "Business",
+                  color: Color(0xFF2193B0),
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF2193B0), Color(0xFF6DD5ED)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  onTap: () {
+                    final homeScreenState = context
+                        .findAncestorStateOfType<_HomeScreenState>();
+                    homeScreenState?._navigateToCategoryProducts("Business");
+                  },
+                ),
+                _LaptopCategoryCard(
+                  icon: Icons.school,
+                  label: "Students",
+                  color: Color(0xFF3F2B96),
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF3F2B96), Color(0xFFA8C0FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  onTap: () {
+                    final homeScreenState = context
+                        .findAncestorStateOfType<_HomeScreenState>();
+                    homeScreenState?._navigateToCategoryProducts("Student");
+                  },
+                ),
+                _LaptopCategoryCard(
+                  icon: Icons.savings,
+                  label: "Budget",
+                  color: Color(0xFF11998E),
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF11998E), Color(0xFF38EF7D)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  onTap: () {
+                    final homeScreenState = context
+                        .findAncestorStateOfType<_HomeScreenState>();
+                    homeScreenState?._navigateToCategoryProducts("Budget");
+                  },
+                ),
               ],
             ),
           ),
+
+          // ======================= CATEGORIES END =======================
           const SizedBox(height: 24),
+          // =============== FEATURED PRODUCTS START ===============
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -1259,12 +1403,12 @@ class _HomeBody extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AllProductsScreen(),
-                      ),
-                    );
+                    // Find the HomeScreen state and navigate to AllProducts
+                    final homeScreenState = context
+                        .findAncestorStateOfType<_HomeScreenState>();
+                    homeScreenState?._onItemTapped(
+                      2,
+                    ); // 2 is the index for AllProducts
                   },
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
@@ -1338,13 +1482,13 @@ class _HomeBody extends StatelessWidget {
                       final imageUrl = product['imageUrl'] ?? '';
                       final productId = products[index].id;
 
-                      // 创建包含ID的产品数据
+                      // Create product with ID for cart functionality
                       final productWithId = Map<String, dynamic>.from(product);
                       productWithId['id'] = productId;
 
                       return GestureDetector(
                         onTap: () {
-                          // 导航到产品详情页面
+                          // Navigate to product detail page
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -1358,10 +1502,26 @@ class _HomeBody extends StatelessWidget {
                             color: Colors.grey[100],
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
+                              // Main shadow with more depth
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                                spreadRadius: 0,
+                              ),
+                              // Secondary shadow for more depth
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.05),
-                                blurRadius: 6,
-                                offset: const Offset(0, 4),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                                spreadRadius: -2,
+                              ),
+                              // Bottom shadow specifically
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 15,
+                                offset: const Offset(0, 8),
+                                spreadRadius: -3,
                               ),
                             ],
                           ),
@@ -1526,34 +1686,60 @@ class _HomeBody extends StatelessWidget {
   }
 }
 
-class _CategoryCard extends StatelessWidget {
+class _LaptopCategoryCard extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _CategoryCard({required this.icon, required this.label});
+  final Color color;
+  final Gradient gradient;
+  final VoidCallback? onTap;
+
+  const _LaptopCategoryCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.gradient,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 80,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: AppColors.hint,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 32, color: Colors.white),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 80, // Reduced from 100 to 80
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: gradient,
+          // Removed shadow from here
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 40, // Reduced from 50 to 40
+              height: 40, // Reduced from 50 to 40
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                icon,
+                size: 24,
+                color: Colors.white,
+              ), // Reduced icon size from 28 to 24
             ),
-          ),
-        ],
+            const SizedBox(height: 8), // Reduced from 10 to 8
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12, // Reduced from 14 to 12
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

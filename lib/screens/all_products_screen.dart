@@ -8,7 +8,10 @@ import 'package:laptop_harbor/screens/product_detail_screen.dart';
 import '../../core/constants/app_constants.dart';
 
 class AllProductsScreen extends StatefulWidget {
-  const AllProductsScreen({super.key});
+  final String? initialBrand;
+  final String? initialCategory;
+
+  const AllProductsScreen({super.key, this.initialBrand, this.initialCategory});
 
   @override
   State<AllProductsScreen> createState() => _AllProductsScreenState();
@@ -58,6 +61,26 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
     super.initState();
     _scrollController.addListener(_handleScroll);
     _fetchPriceRange();
+
+    // Set initial brand if provided
+    if (widget.initialBrand != null && widget.initialBrand!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          selectedBrand = widget.initialBrand!;
+          selectedFilter = 'Brand';
+        });
+      });
+    }
+
+    // Set initial category if provided
+    if (widget.initialCategory != null && widget.initialCategory!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          selectedCategory = widget.initialCategory!;
+          selectedFilter = 'Category';
+        });
+      });
+    }
   }
 
   void _handleScroll() {
@@ -187,7 +210,11 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
         elevation: 0,
         backgroundColor: Colors.white,
         title: Text(
-          "All Products",
+          selectedBrand.isNotEmpty
+              ? selectedBrand
+              : (selectedCategory.isNotEmpty
+                    ? selectedCategory
+                    : "All Products"),
           style: GoogleFonts.orbitron(
             color: AppColors.dark,
             fontWeight: FontWeight.bold,
@@ -701,37 +728,6 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
           ],
         ),
       ),
-      // bottomNavigationBar: BottomNavigationBar(
-      //   currentIndex: _selectedIndex,
-      //   onTap: _onItemTapped,
-      //   type: BottomNavigationBarType.fixed,
-      //   selectedItemColor: AppColors.main,
-      //   unselectedItemColor: AppColors.hint,
-      //   showSelectedLabels: false,
-      //   showUnselectedLabels: false,
-      //   items: const [
-      //     // 🏠 Home - Left
-      //     BottomNavigationBarItem(
-      //       icon: Icon(Icons.home_outlined),
-      //       activeIcon: Icon(Icons.home),
-      //       label: "",
-      //     ),
-
-      //     // 🛒 Cart - Center
-      //     BottomNavigationBarItem(
-      //       icon: Icon(Icons.shopping_cart_outlined),
-      //       activeIcon: Icon(Icons.shopping_cart),
-      //       label: "",
-      //     ),
-
-      //     // 📦 All Products - Right
-      //     BottomNavigationBarItem(
-      //       icon: Icon(Icons.inventory_2_outlined),
-      //       activeIcon: Icon(Icons.inventory_2),
-      //       label: "",
-      //     ),
-      //   ],
-      // ),
     );
   }
 }
