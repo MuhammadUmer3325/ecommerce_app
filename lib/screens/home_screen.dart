@@ -15,7 +15,6 @@ import 'package:laptop_harbor/screens/my_orders_screen.dart';
 import 'package:laptop_harbor/screens/product_detail_screen.dart';
 import 'package:laptop_harbor/screens/profile_detail_screen.dart';
 import 'package:laptop_harbor/screens/track_order_screen.dart';
-import 'dart:async';
 
 // ===================== CART LOGIC =====================
 class Cart extends ChangeNotifier {
@@ -920,85 +919,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _HomeBody extends StatefulWidget {
+class _HomeBody extends StatelessWidget {
   const _HomeBody();
-
-  @override
-  State<_HomeBody> createState() => _HomeBodyState();
-}
-
-class _HomeBodyState extends State<_HomeBody> {
-  final PageController _pageController = PageController(
-    viewportFraction: 0.85, // Show part of previous/next page
-    initialPage: 1, // Start with the first real item (not the clone)
-  );
-  int _currentPage = 0; // Track the current page (0, 1, or 2)
-  Timer? _timer;
-  bool _isAutoScrolling = true;
-  bool _isUserScrolling = false; // Track if user is manually scrolling
-
-  // Banner data
-  final List<Map<String, String>> _bannerData = [
-    {
-      'image': "assets/images/gaming_laptop_banner.png",
-      'title': "Gaming Laptops",
-      'subtitle': "High performance machines",
-    },
-    {
-      'image': "assets/images/ultrabook_banner.png",
-      'title': "Ultrabooks",
-      'subtitle': "Lightweight & portable",
-    },
-    {
-      'image': "assets/images/business_laptop_banner.png",
-      'title': "Business Laptops",
-      'subtitle': "Reliable for office work",
-    },
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    // Auto-scroll every 4 seconds
-    _timer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
-      if (_isAutoScrolling && _pageController.hasClients && !_isUserScrolling) {
-        _nextPage();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  void _nextPage() {
-    if (_currentPage < 2) {
-      _currentPage++;
-    } else {
-      _currentPage = 0;
-    }
-    _pageController.animateToPage(
-      _currentPage + 1, // +1 because of the clone at the beginning
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  void _previousPage() {
-    if (_currentPage > 0) {
-      _currentPage--;
-    } else {
-      _currentPage = 2;
-    }
-    _pageController.animateToPage(
-      _currentPage + 1, // +1 because of the clone at the beginning
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1007,90 +929,21 @@ class _HomeBodyState extends State<_HomeBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner section with infinite PageView
           SizedBox(
             height: 180,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (ScrollNotification notification) {
-                if (notification is ScrollUpdateNotification) {
-                  // User is manually scrolling
-                  _isUserScrolling = true;
-
-                  // Reset the auto-scroll timer when user stops scrolling
-                  _timer?.cancel();
-                  _timer = Timer.periodic(const Duration(seconds: 4), (
-                    Timer timer,
-                  ) {
-                    if (_isAutoScrolling &&
-                        _pageController.hasClients &&
-                        !_isUserScrolling) {
-                      _nextPage();
-                    }
-                  });
-
-                  // Reset user scrolling flag after a delay
-                  Timer(const Duration(milliseconds: 500), () {
-                    _isUserScrolling = false;
-                  });
-
-                  // Handle page changes
-                  if (_pageController.page == 0) {
-                    // We're at the clone of the last item, jump to the real last item
-                    _pageController.jumpToPage(3);
-                    _currentPage = 2;
-                  } else if (_pageController.page == 4) {
-                    // We're at the clone of the first item, jump to the real first item
-                    _pageController.jumpToPage(1);
-                    _currentPage = 0;
-                  } else {
-                    // Update current page based on the page controller
-                    _currentPage = (_pageController.page! - 1).round();
-                  }
-                }
-                return false;
-              },
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (int page) {
-                  // This is called when the user manually changes the page
-                  if (page == 0) {
-                    // We're at the clone of the last item
-                    setState(() {
-                      _currentPage = 2;
-                    });
-                  } else if (page == 4) {
-                    // We're at the clone of the first item
-                    setState(() {
-                      _currentPage = 0;
-                    });
-                  } else {
-                    // Update current page based on the page controller
-                    setState(() {
-                      _currentPage = page - 1;
-                    });
-                  }
-                },
-                itemCount: 5, // 3 real items + 2 clones for infinite scrolling
-                itemBuilder: (context, index) {
-                  // Get the actual banner index (0, 1, or 2)
-                  int bannerIndex = index;
-                  if (index == 0) {
-                    // First clone - show the last banner
-                    bannerIndex = 2;
-                  } else if (index == 4) {
-                    // Last clone - show the first banner
-                    bannerIndex = 0;
-                  } else {
-                    // Real banner
-                    bannerIndex = index - 1;
-                  }
-
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  Container(
+                    width: 280,
+                    margin: const EdgeInsets.only(left: 16, right: 8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      image: DecorationImage(
-                        image: AssetImage(_bannerData[bannerIndex]['image']!),
+                      image: const DecorationImage(
+                        image: AssetImage(
+                          "assets/images/gaming_laptop_banner.png",
+                        ),
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -1108,21 +961,21 @@ class _HomeBodyState extends State<_HomeBody> {
                       ),
                       padding: const EdgeInsets.all(16),
                       alignment: Alignment.bottomLeft,
-                      child: Column(
+                      child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _bannerData[bannerIndex]['title']!,
-                            style: const TextStyle(
+                            "Gaming Laptops",
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                           ),
                           Text(
-                            _bannerData[bannerIndex]['subtitle']!,
-                            style: const TextStyle(
+                            "High performance machines",
+                            style: TextStyle(
                               fontSize: 14,
                               color: Colors.white70,
                             ),
@@ -1130,29 +983,106 @@ class _HomeBodyState extends State<_HomeBody> {
                         ],
                       ),
                     ),
-                  );
-                },
+                  ),
+                  Container(
+                    width: 280,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: const DecorationImage(
+                        image: AssetImage("assets/images/ultrabook_banner.png"),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withOpacity(0.4),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      alignment: Alignment.bottomLeft,
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Ultrabooks",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            "Lightweight & portable",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 280,
+                    margin: const EdgeInsets.only(left: 8, right: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: const DecorationImage(
+                        image: AssetImage(
+                          "assets/images/business_laptop_banner.png",
+                        ),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withOpacity(0.4),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      alignment: Alignment.bottomLeft,
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Business Laptops",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            "Reliable for office work",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          // Page indicators (dots)
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(3, (index) {
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                height: 8,
-                width: _currentPage == index ? 24 : 8,
-                decoration: BoxDecoration(
-                  color: _currentPage == index
-                      ? AppColors.main
-                      : Colors.grey.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              );
-            }),
           ),
           const SizedBox(height: 24),
           // ====================== TOP BRANDS ======================
@@ -1317,7 +1247,7 @@ class _HomeBodyState extends State<_HomeBody> {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 90, // Reduced from 120 to 90
+            height: 100, // Reduced from 120
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
@@ -1388,50 +1318,68 @@ class _HomeBodyState extends State<_HomeBody> {
           // ======================= CATEGORIES END =======================
           const SizedBox(height: 24),
           // =============== FEATURED PRODUCTS START ===============
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Featured Products",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.main,
-                  ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final isMobile = screenWidth < 600;
+
+              return Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 16,
+                  vertical: isMobile ? 6 : 8,
                 ),
-                TextButton(
-                  onPressed: () {
-                    // Find the HomeScreen state and navigate to AllProducts
-                    final homeScreenState = context
-                        .findAncestorStateOfType<_HomeScreenState>();
-                    homeScreenState?._onItemTapped(
-                      2,
-                    ); // 2 is the index for AllProducts
-                  },
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        "Featured Products",
+                        style: TextStyle(
+                          fontSize: isMobile ? 16 : 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.main,
+                        ),
+                      ),
                     ),
-                    backgroundColor: AppColors.main,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    const SizedBox(width: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 90,
+                        maxWidth: 120,
+                      ),
+                      child: TextButton(
+                        onPressed: () {
+                          final homeScreenState = context
+                              .findAncestorStateOfType<_HomeScreenState>();
+                          homeScreenState?._onItemTapped(2);
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: AppColors.main,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isMobile ? 8 : 12,
+                            vertical: isMobile ? 4 : 6,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          "See All",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isMobile ? 12 : 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    "See All",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
+
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('products')
@@ -1444,237 +1392,251 @@ class _HomeBodyState extends State<_HomeBody> {
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(child: Text('No featured products found'));
               }
+
               final products = snapshot.data!.docs;
+
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final screenWidth = constraints.maxWidth;
-                  int crossAxisCount = 2;
-                  if (screenWidth > 1200) {
-                    crossAxisCount = 5;
-                  } else if (screenWidth > 900) {
-                    crossAxisCount = 4;
-                  } else if (screenWidth > 600) {
+                  int crossAxisCount;
+
+                  if (screenWidth < 500) {
+                    crossAxisCount = 2;
+                  } else if (screenWidth < 900) {
                     crossAxisCount = 3;
+                  } else if (screenWidth < 1300) {
+                    crossAxisCount = 4;
+                  } else {
+                    crossAxisCount = 5;
                   }
-                  const double spacing = 12;
+
+                  const double spacing = 14;
                   final double cardWidth =
                       (screenWidth - ((crossAxisCount - 1) * spacing)) /
                       crossAxisCount;
                   final double cardHeight = cardWidth * 1.45;
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    itemCount: products.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: spacing,
-                      mainAxisSpacing: spacing,
-                      childAspectRatio: cardWidth / cardHeight,
-                    ),
-                    itemBuilder: (context, index) {
-                      final product =
-                          products[index].data() as Map<String, dynamic>;
-                      final stock = product['stock'] ?? 0;
-                      final imageUrl = product['imageUrl'] ?? '';
-                      final productId = products[index].id;
 
-                      // Create product with ID for cart functionality
-                      final productWithId = Map<String, dynamic>.from(product);
-                      productWithId['id'] = productId;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth < 600 ? 12 : 16,
+                        vertical: 10,
+                      ),
+                      itemCount: products.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: spacing,
+                        mainAxisSpacing: spacing,
+                        childAspectRatio: cardWidth / cardHeight,
+                      ),
+                      itemBuilder: (context, index) {
+                        final product =
+                            products[index].data() as Map<String, dynamic>;
+                        final stock = product['stock'] ?? 0;
+                        final imageUrl = product['imageUrl'] ?? '';
+                        final productId = products[index].id;
 
-                      return GestureDetector(
-                        onTap: () {
-                          // Navigate to product detail page
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ProductDetailScreen(product: productWithId),
+                        final productWithId = Map<String, dynamic>.from(
+                          product,
+                        );
+                        productWithId['id'] = productId;
+
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ProductDetailScreen(product: productWithId),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 6),
+                                  spreadRadius: -2,
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 8),
+                                  spreadRadius: -3,
+                                ),
+                              ],
                             ),
-                          );
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              // Main shadow with more depth
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                                spreadRadius: 0,
-                              ),
-                              // Secondary shadow for more depth
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 20,
-                                offset: const Offset(0, 6),
-                                spreadRadius: -2,
-                              ),
-                              // Bottom shadow specifically
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 15,
-                                offset: const Offset(0, 8),
-                                spreadRadius: -3,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Stack(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(16),
-                                    ),
-                                    child: Image.network(
-                                      imageUrl,
-                                      width: double.infinity,
-                                      height: cardHeight * 0.5,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return Container(
-                                              height: cardHeight * 0.5,
-                                              color: Colors.grey[300],
-                                              child: const Icon(
-                                                Icons.broken_image,
-                                                size: 40,
-                                                color: Colors.white,
-                                              ),
-                                            );
-                                          },
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: 8,
-                                    left: 8,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(16),
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: stock == 0
-                                            ? Colors.redAccent
-                                            : Colors.green,
-                                        borderRadius: BorderRadius.circular(10),
+                                      child: Image.network(
+                                        imageUrl,
+                                        width: double.infinity,
+                                        height: cardHeight * 0.5,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Container(
+                                                height: cardHeight * 0.5,
+                                                color: Colors.grey[300],
+                                                child: const Icon(
+                                                  Icons.broken_image,
+                                                  size: 40,
+                                                  color: Colors.white,
+                                                ),
+                                              );
+                                            },
                                       ),
-                                      child: Text(
-                                        stock == 0 ? "Out of Stock" : "Sale",
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      left: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: stock == 0
+                                              ? Colors.redAccent
+                                              : Colors.green,
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          stock == 0 ? "Out of Stock" : "Sale",
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product['name'] ?? '',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: screenWidth < 400 ? 12 : 14,
+                                  ],
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          product['name'] ?? '',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: screenWidth < 400
+                                                ? 12
+                                                : 14,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        product['brand'] ?? '',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: screenWidth < 400 ? 10 : 12,
-                                          color: Colors.grey,
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          product['brand'] ?? '',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: screenWidth < 400
+                                                ? 10
+                                                : 12,
+                                            color: Colors.grey,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "Rs ${product['price']}",
-                                        style: TextStyle(
-                                          fontSize: screenWidth < 400 ? 11 : 13,
-                                          color: Colors.black87,
-                                          fontWeight: FontWeight.w500,
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "Rs ${product['price']}",
+                                          style: TextStyle(
+                                            fontSize: screenWidth < 400
+                                                ? 11
+                                                : 13,
+                                            color: Colors.black87,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
-                                      ),
-                                      const Spacer(),
-                                      Center(
-                                        child: SizedBox(
-                                          width: screenWidth < 400
-                                              ? double.infinity
-                                              : 110,
-                                          child: ElevatedButton(
-                                            onPressed: stock == 0
-                                                ? null
-                                                : () {
-                                                    Cart.instance.addItem(
-                                                      productWithId,
-                                                    );
-
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          '${product['name']} added to cart!',
+                                        const Spacer(),
+                                        Center(
+                                          child: SizedBox(
+                                            width: screenWidth < 400
+                                                ? double.infinity
+                                                : 110,
+                                            child: ElevatedButton(
+                                              onPressed: stock == 0
+                                                  ? null
+                                                  : () {
+                                                      Cart.instance.addItem(
+                                                        productWithId,
+                                                      );
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            '${product['name']} added to cart!',
+                                                          ),
+                                                          duration:
+                                                              const Duration(
+                                                                seconds: 2,
+                                                              ),
                                                         ),
-                                                        duration:
-                                                            const Duration(
-                                                              seconds: 2,
-                                                            ),
-                                                      ),
-                                                    );
-                                                  },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.main,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
+                                                      );
+                                                    },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppColors.main,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 6,
+                                                    ),
                                               ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 6,
-                                                  ),
-                                            ),
-                                            child: Text(
-                                              "Add to Cart",
-                                              style: TextStyle(
-                                                fontSize: screenWidth < 400
-                                                    ? 11
-                                                    : 12,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.white,
+                                              child: Text(
+                                                "Add to Cart",
+                                                style: TextStyle(
+                                                  fontSize: screenWidth < 400
+                                                      ? 11
+                                                      : 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: Colors.white,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   );
                 },
               );
@@ -1706,19 +1668,19 @@ class _LaptopCategoryCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 80, // Reduced from 100 to 80
+        width: 85, // Reduced from 100
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: gradient,
-          // Removed shadow from here
+          // Removed shadow
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 40, // Reduced from 50 to 40
-              height: 40, // Reduced from 50 to 40
+              width: 40, // Reduced from 50
+              height: 40, // Reduced from 50
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(16),
@@ -1727,13 +1689,13 @@ class _LaptopCategoryCard extends StatelessWidget {
                 icon,
                 size: 24,
                 color: Colors.white,
-              ), // Reduced icon size from 28 to 24
+              ), // Reduced from 28
             ),
-            const SizedBox(height: 8), // Reduced from 10 to 8
+            const SizedBox(height: 8), // Reduced from 10
             Text(
               label,
               style: const TextStyle(
-                fontSize: 12, // Reduced from 14 to 12
+                fontSize: 13, // Reduced from 14
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
