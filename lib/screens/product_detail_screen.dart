@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:convert'; // For Base64 encoding/decoding
+import 'dart:io'; // For File handling
+import 'dart:typed_data'; // For Uint8List
+import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter/material.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
@@ -5,7 +10,9 @@ import 'package:laptop_harbor/screens/auth/login_screen.dart';
 import 'package:laptop_harbor/screens/cart_screen.dart';
 import 'package:laptop_harbor/screens/checkout_screen.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Add this import
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -18,6 +25,14 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen>
     with TickerProviderStateMixin {
   final Cart _cart = Cart.instance;
+  final ImagePicker _picker = ImagePicker(); // Image picker instance
+  dynamic _selectedImage; // Changed to dynamic to handle both File and XFile
+  String? _base64String; // To store the Base64 string of the image
+
+  // Add a controller for the reviews stream
+  late StreamController<QuerySnapshot> _reviewsStreamController;
+  late Stream<QuerySnapshot> _reviewsStream;
+
   late AnimationController _animationController;
   late AnimationController _heartAnimationController;
   late Animation<double> _fadeAnimation;
@@ -25,39 +40,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   int _quantity = 1;
   bool _isFavorite = false;
   bool _isExpanded = false;
-  double _averageRating = 4.5;
-  int _totalReviews = 128;
   final TextEditingController _reviewController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   double _userRating = 0;
-  bool _isLoggedIn = false; // Track if user is logged in
-  String _userName = ''; // Store user name if logged in
-  String _userEmail = ''; // Store user email if logged in
+  bool _isLoggedIn = false;
+  String _userName = '';
+  String _userEmail = '';
 
-  final List<Map<String, dynamic>> _reviews = [
-    {
-      'name': 'Ahmed Ali',
-      'rating': 5.0,
-      'date': '2 days ago',
-      'comment': 'Excellent laptop! Very fast and the display is amazing.',
-    },
-    {
-      'name': 'Sara Khan',
-      'rating': 4.0,
-      'date': '1 week ago',
-      'comment': 'Good value for money. Battery life could be better.',
-    },
-    {
-      'name': 'Usman Malik',
-      'rating': 4.5,
-      'date': '2 weeks ago',
-      'comment': 'Great performance for gaming and work.',
-    },
-  ];
+  // Create a consistent product ID that will be used throughout the component
+  late String _productId;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize product ID once - using multiple fallbacks to ensure we have a unique ID
+    _productId =
+        widget.product['id']?.toString() ??
+        widget.product['_id']?.toString() ??
+        widget.product['productId']?.toString() ??
+        widget.product['name']?.toString() ??
+        'unknown_product';
+
+    // Initialize reviews stream
+    _reviewsStreamController = StreamController<QuerySnapshot>.broadcast();
+    _reviewsStream = _reviewsStreamController.stream;
+    _fetchReviews();
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -77,10 +86,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
     _animationController.forward();
 
-    // Check if user is logged in
     _checkLoginStatus();
 
-    // Listen to auth state changes
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (mounted) {
         setState(() {
@@ -88,7 +95,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _userName = user?.displayName ?? '';
           _userEmail = user?.email ?? '';
 
-          // If user is logged in, pre-fill the name field
           if (_isLoggedIn && _userName.isNotEmpty) {
             _nameController.text = _userName;
           }
@@ -97,20 +103,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     });
   }
 
-  void _checkLoginStatus() {
-    // Check if user is logged in using Firebase Auth
-    final User? user = FirebaseAuth.instance.currentUser;
+  // Function to fetch reviews with better error handling and debugging
+  void _fetchReviews() {
+    print('Fetching reviews for product ID: $_productId');
+    print('Product name: ${widget.product['name']}');
 
-    setState(() {
-      _isLoggedIn = user != null;
-      _userName = user?.displayName ?? '';
-      _userEmail = user?.email ?? '';
-
-      // If user is logged in, pre-fill the name field
-      if (_isLoggedIn && _userName.isNotEmpty) {
-        _nameController.text = _userName;
-      }
-    });
+    FirebaseFirestore.instance
+        .collection('reviews')
+        .where('productId', isEqualTo: _productId)
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+          print(
+            'Found ${snapshot.docs.length} reviews for product ID: $_productId',
+          );
+          if (_reviewsStreamController.hasListener &&
+              !_reviewsStreamController.isClosed) {
+            _reviewsStreamController.add(snapshot);
+          }
+        });
   }
 
   @override
@@ -119,14 +130,98 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     _heartAnimationController.dispose();
     _reviewController.dispose();
     _nameController.dispose();
+    _reviewsStreamController.close();
     super.dispose();
+  }
+
+  void _checkLoginStatus() {
+    final User? user = FirebaseAuth.instance.currentUser;
+
+    setState(() {
+      _isLoggedIn = user != null;
+      _userName = user?.displayName ?? '';
+      _userEmail = user?.email ?? '';
+
+      if (_isLoggedIn && _userName.isNotEmpty) {
+        _nameController.text = _userName;
+      }
+    });
+  }
+
+  // Function to pick image from camera and convert to Base64
+  Future<void> _pickImageFromCamera() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 50, // Reduce quality to keep Base64 string smaller
+    );
+
+    if (pickedFile != null) {
+      Uint8List imageBytes = await pickedFile.readAsBytes();
+      String base64String = base64Encode(imageBytes);
+
+      setState(() {
+        if (kIsWeb) {
+          // For web, store the XFile directly
+          _selectedImage = pickedFile;
+        } else {
+          // For mobile/desktop, store as File
+          _selectedImage = File(pickedFile.path);
+        }
+        _base64String = base64String;
+      });
+    }
+  }
+
+  // Function to pick image from gallery and convert to Base64
+  Future<void> _pickImageFromGallery() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50, // Reduce quality to keep Base64 string smaller
+    );
+
+    if (pickedFile != null) {
+      Uint8List imageBytes = await pickedFile.readAsBytes();
+      String base64String = base64Encode(imageBytes);
+
+      setState(() {
+        if (kIsWeb) {
+          // For web, store the XFile directly
+          _selectedImage = pickedFile;
+        } else {
+          // For mobile/desktop, store as File
+          _selectedImage = File(pickedFile.path);
+        }
+        _base64String = base64String;
+      });
+    }
+  }
+
+  // Function to format Firestore Timestamp into a readable string
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      if (difference.inHours == 0) {
+        if (difference.inMinutes == 0) {
+          return 'Just now';
+        }
+        return '${difference.inMinutes}m ago';
+      }
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
   }
 
   void _addToCart() {
     final product = widget.product;
     final productId = product['id'] ?? product['name'];
 
-    // Create the item to add
     final item = {
       'id': productId,
       'name': product['name'] ?? 'Unnamed Product',
@@ -136,38 +231,83 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       'imageUrl': product['imageUrl'] ?? product['image'] ?? '',
     };
 
-    // Check if product already exists in cart
     bool itemExists = false;
-    final cartItems =
-        _cart.items; // Using _cart.items directly as per CartScreen
+    final cartItems = _cart.items;
 
-    // Check if the item already exists in the cart
     if (cartItems.containsKey(productId)) {
-      // Product exists, update quantity
       final existingItem = cartItems[productId]!;
       final currentQuantity = existingItem['quantity'] ?? 1;
       _cart.updateQuantity(productId, currentQuantity + _quantity);
       itemExists = true;
     } else {
-      // Product doesn't exist, add new item
       _cart.addItem(item);
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(
-              itemExists
-                  ? "Cart updated: ${_quantity} more ${product['name']}"
-                  : "${_quantity} x ${product['name']} added to cart",
-            ),
-          ],
-        ),
-        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating, // makes it float (modern look)
+        elevation: 10,
         backgroundColor: AppColors.main,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+
+        // 👇 Responsive margins
+        margin: EdgeInsets.symmetric(
+          horizontal: MediaQuery.of(context).size.width < 600
+              ? 16
+              : MediaQuery.of(context).size.width < 1024
+              ? MediaQuery.of(context).size.width * 0.2
+              : MediaQuery.of(context).size.width * 0.3,
+          vertical: 20,
+        ),
+
+        content: LayoutBuilder(
+          builder: (context, constraints) {
+            double screenWidth = constraints.maxWidth;
+            bool isMobile = screenWidth < 600;
+            bool isTablet = screenWidth >= 600 && screenWidth < 1024;
+            bool isDesktop = screenWidth >= 1024;
+
+            double fontSize = isDesktop
+                ? 18
+                : isTablet
+                ? 16
+                : 14;
+            double iconSize = isDesktop
+                ? 26
+                : isTablet
+                ? 22
+                : 20;
+            double spacing = isDesktop
+                ? 12
+                : isTablet
+                ? 10
+                : 8;
+
+            return Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: iconSize),
+                SizedBox(width: spacing),
+                Expanded(
+                  child: Text(
+                    itemExists
+                        ? "Cart updated: ${_quantity} more ${product['name']}"
+                        : "${_quantity} x ${product['name']} added to cart",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        duration: const Duration(seconds: 2),
+
         action: SnackBarAction(
           label: 'VIEW CART',
           textColor: Colors.white,
@@ -181,7 +321,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ),
     );
 
-    // Reset quantity after adding to cart
     setState(() {
       _quantity = 1;
     });
@@ -191,7 +330,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final product = widget.product;
     final productId = product['id'] ?? product['name'];
 
-    // Create the item to add
     final item = {
       'id': productId,
       'name': product['name'] ?? 'Unnamed Product',
@@ -201,30 +339,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       'imageUrl': product['imageUrl'] ?? product['image'] ?? '',
     };
 
-    // Check if product already exists in cart
     bool itemExists = false;
-    final cartItems =
-        _cart.items; // Using _cart.items directly as per CartScreen
+    final cartItems = _cart.items;
 
-    // Check if the item already exists in the cart
     if (cartItems.containsKey(productId)) {
-      // Product exists, update quantity
       final existingItem = cartItems[productId]!;
       final currentQuantity = existingItem['quantity'] ?? 1;
       _cart.updateQuantity(productId, currentQuantity + _quantity);
       itemExists = true;
     } else {
-      // Product doesn't exist, add new item
       _cart.addItem(item);
     }
 
-    // Navigate to checkout screen
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CheckoutScreen()),
     );
 
-    // Reset quantity after buying
     setState(() {
       _quantity = 1;
     });
@@ -241,190 +372,243 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
   }
 
-  void _submitReview() {
+  // Function to submit review to Firestore with better debugging
+  void _submitReview() async {
     if (_reviewController.text.isNotEmpty && _userRating > 0) {
-      setState(() {
-        _reviews.insert(0, {
-          'name': _isLoggedIn
-              ? (_userName.isNotEmpty ? _userName : _userEmail.split('@')[0])
-              : _nameController.text,
-          'rating': _userRating,
-          'date': 'Just now',
-          'comment': _reviewController.text,
+      // Show a loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      Map<String, dynamic> newReview = {
+        'productId': _productId, // Use the consistent product ID
+        'productName': widget.product['name'] ?? 'Unknown Product',
+        'userId': FirebaseAuth.instance.currentUser?.uid,
+        'userName': _userName.isNotEmpty ? _userName : _userEmail.split('@')[0],
+        'userEmail': _userEmail,
+        'rating': _userRating,
+        'comment': _reviewController.text,
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+
+      if (_base64String != null) {
+        newReview['imageBase64'] = _base64String;
+      }
+
+      print('Submitting review for product ID: $_productId');
+      print('Product name: ${widget.product['name']}');
+
+      try {
+        await FirebaseFirestore.instance.collection('reviews').add(newReview);
+
+        _reviewController.clear();
+        _userRating = 0;
+        setState(() {
+          _selectedImage = null;
+          _base64String = null;
         });
-        // Update average rating
-        double totalRating = _reviews.fold(
-          0.0,
-          (sum, review) => sum + review['rating'],
+
+        Navigator.of(context).pop(); // Close loading dialog
+        Navigator.of(context).pop(); // Close review dialog
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Thank you for your review!'),
+            backgroundColor: Colors.green,
+          ),
         );
-        _averageRating = totalRating / _reviews.length;
-        _totalReviews = _reviews.length;
-      });
-      _reviewController.clear();
-      _userRating = 0;
-      Navigator.of(context).pop();
+
+        // Refresh reviews after adding a new one
+        _fetchReviews();
+      } catch (e) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit review: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Thank you for your review!'),
-          backgroundColor: Colors.green,
+          content: Text('Please provide a rating and review text'),
+          backgroundColor: Colors.orange,
         ),
       );
     }
   }
 
+  // Dialog to add review with image picker
   void _showAddReviewDialog() {
-    if (!_isLoggedIn) {
-      // Show login prompt if user is not logged in
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Login Required'),
-          content: const Text('You need to login to add a review.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.main),
-              child: const Text('Login'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
-    // Show review dialog if user is logged in
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Your Review'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Show user's info if logged in
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.person, color: AppColors.main),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Reviewing as: ${_userName.isNotEmpty ? _userName : _userEmail.split('@')[0]}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Your Review'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person, color: AppColors.main),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Reviewing as: ${_userName.isNotEmpty ? _userName : _userEmail.split('@')[0]}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text('Rating:'),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  return IconButton(
-                    icon: Icon(
-                      index < _userRating ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _userRating = index + 1.0;
-                      });
-                    },
-                  );
-                }),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                const Text('Rating:'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    return IconButton(
+                      icon: Icon(
+                        index < _userRating ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _userRating = index + 1.0;
+                        });
+                        setDialogState(() {}); // Update dialog UI
+                      },
+                    );
+                  }),
                 ),
-                child: TextField(
+                const SizedBox(height: 16),
+
+                // Image Picker and Preview Section
+                if (_selectedImage != null)
+                  Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: kIsWeb
+                            ? FutureBuilder<Uint8List>(
+                                future: _selectedImage.readAsBytes(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                          ConnectionState.done &&
+                                      snapshot.data != null) {
+                                    return Image.memory(
+                                      snapshot.data!,
+                                      height: 150,
+                                      fit: BoxFit.cover,
+                                    );
+                                  }
+                                  return const CircularProgressIndicator();
+                                },
+                              )
+                            : Image.file(
+                                _selectedImage,
+                                height: 150,
+                                fit: BoxFit.cover,
+                              ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedImage = null;
+                            _base64String = null;
+                          });
+                          setDialogState(() {}); // Update dialog UI
+                        },
+                        child: const Text(
+                          'Remove Image',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () async {
+                          await _pickImageFromCamera();
+                          setDialogState(
+                            () {},
+                          ); // Refresh dialog after picking image
+                        },
+                        icon: const Icon(Icons.camera_alt),
+                        label: const Text('Camera'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () async {
+                          await _pickImageFromGallery();
+                          setDialogState(
+                            () {},
+                          ); // Refresh dialog after picking image
+                        },
+                        icon: const Icon(Icons.photo_library),
+                        label: const Text('Gallery'),
+                      ),
+                    ],
+                  ),
+
+                const SizedBox(height: 16),
+                TextField(
                   controller: _reviewController,
                   decoration: InputDecoration(
                     labelText: 'Your Review',
-                    hintText: 'Share your experience with this product...',
-                    labelStyle: const TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    hintStyle: const TextStyle(color: Colors.grey),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    enabledBorder: OutlineInputBorder(
+                    hintText: 'Share your experience...',
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.main,
-                        width: 1.5,
-                      ),
                     ),
                   ),
                   maxLines: 3,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedImage = null;
+                  _base64String = null;
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: _submitReview,
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.main),
+              child: const Text('Submit'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: _submitReview,
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.main),
-            child: const Text('Submit'),
-          ),
-        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Responsive design variables
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // Define breakpoints for different screen sizes
-    final isSmallScreen = screenWidth < 400; // Small phones
-    final isRegularPhone =
-        screenWidth >= 400 && screenWidth < 600; // Regular phones
-    final isTablet = screenWidth >= 600 && screenWidth < 1000; // Tablets
-    final isDesktop = screenWidth >= 1000; // Desktop/Web
+    final isSmallScreen = screenWidth < 400;
+    final isRegularPhone = screenWidth >= 400 && screenWidth < 600;
+    final isTablet = screenWidth >= 600 && screenWidth < 1000;
+    final isDesktop = screenWidth >= 1000;
 
-    // Calculate responsive padding and margins
     final horizontalPadding = isDesktop
         ? screenWidth * 0.15
         : isTablet
@@ -433,7 +617,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         ? 12.0
         : 16.0;
 
-    // Calculate responsive font sizes
     final titleFontSize = isDesktop
         ? 32.0
         : isTablet
@@ -441,7 +624,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         : isSmallScreen
         ? 22.0
         : 24.0;
-
     final subtitleFontSize = isDesktop
         ? 20.0
         : isTablet
@@ -449,7 +631,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         : isSmallScreen
         ? 14.0
         : 16.0;
-
     final bodyFontSize = isDesktop
         ? 18.0
         : isTablet
@@ -457,7 +638,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         : isSmallScreen
         ? 14.0
         : 15.0;
-
     final priceFontSize = isDesktop
         ? 32.0
         : isTablet
@@ -465,15 +645,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         : isSmallScreen
         ? 22.0
         : 24.0;
-
-    // Calculate responsive image height
     final imageHeight = isDesktop
         ? screenHeight * 0.4
         : isTablet
         ? screenHeight * 0.35
         : screenHeight * 0.4;
-
-    // Calculate responsive button height
     final buttonHeight = isDesktop
         ? 56.0
         : isTablet
@@ -481,8 +657,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         : isSmallScreen
         ? 40.0
         : 45.0;
-
-    // Calculate responsive card padding
     final cardPadding = isDesktop
         ? 28.0
         : isTablet
@@ -490,8 +664,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         : isSmallScreen
         ? 16.0
         : 20.0;
-
-    // Calculate responsive bottom padding for scrollable content
     final bottomPadding = isDesktop
         ? 120.0
         : isTablet
@@ -525,7 +697,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               IconButton(
                 icon: const Icon(Icons.shopping_cart, color: Colors.black),
                 onPressed: () {
-                  // Fixed cart navigation
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const CartScreen()),
@@ -562,17 +733,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ),
       body: Stack(
         children: [
-          // Main content
           FadeTransition(
             opacity: _fadeAnimation,
             child: SingleChildScrollView(
               child: Padding(
-                // Add padding at bottom to prevent content being hidden behind fixed buttons
                 padding: EdgeInsets.only(bottom: bottomPadding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product Image with Hero Animation
                     Hero(
                       tag: 'product-${widget.product['id']}',
                       child: Container(
@@ -635,10 +803,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         ),
                       ),
                     ),
-
                     SizedBox(height: isDesktop ? 30.0 : 20.0),
-
-                    // Product Info Card
                     Container(
                       margin: EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
@@ -659,7 +824,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Product Name and Brand
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -686,162 +850,66 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   ],
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.main.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.star,
-                                      color: Colors.amber[600],
-                                      size: isDesktop ? 22 : 18,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _averageRating.toStringAsFixed(1),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: isDesktop ? 16 : 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              // This rating will now be updated from Firestore
+                              StreamBuilder<QuerySnapshot>(
+                                stream: _reviewsStream,
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData ||
+                                      snapshot.data!.docs.isEmpty) {
+                                    return _buildRatingWidget(0.0, 0);
+                                  }
+                                  final reviews = snapshot.data!.docs;
+                                  double totalRating = 0.0;
+                                  for (var doc in reviews) {
+                                    totalRating +=
+                                        (doc.data()
+                                            as Map<
+                                              String,
+                                              dynamic
+                                            >)['rating'] ??
+                                        0.0;
+                                  }
+                                  final avgRating = reviews.isEmpty
+                                      ? 0.0
+                                      : totalRating / reviews.length;
+                                  return _buildRatingWidget(
+                                    avgRating,
+                                    reviews.length,
+                                  );
+                                },
                               ),
                             ],
                           ),
-
                           SizedBox(height: isDesktop ? 20.0 : 15.0),
-
-                          // Price
-                          Row(
-                            children: [
-                              Text(
-                                "Rs. ${widget.product['price']}",
-                                style: TextStyle(
-                                  fontSize: priceFontSize,
-                                  color: AppColors.main,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              if (widget.product['originalPrice'] != null)
-                                Text(
-                                  "Rs. ${widget.product['originalPrice']}",
-                                  style: TextStyle(
-                                    fontSize: isDesktop
-                                        ? 24
-                                        : isTablet
-                                        ? 20
-                                        : 18,
-                                    color: Colors.grey[500],
-                                    decoration: TextDecoration.lineThrough,
-                                  ),
-                                ),
-                              if (widget.product['discount'] != null)
-                                Container(
-                                  margin: const EdgeInsets.only(left: 10),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    "${widget.product['discount']}% OFF",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: isDesktop ? 14 : 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-
-                          SizedBox(height: isDesktop ? 25.0 : 20.0),
-
-                          // Description
                           Text(
-                            "Description",
+                            "Rs. ${widget.product['price']}",
                             style: TextStyle(
-                              fontSize: isDesktop
-                                  ? 22
-                                  : isTablet
-                                  ? 20
-                                  : 18,
+                              fontSize: priceFontSize,
+                              color: AppColors.main,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: isSmallScreen ? 6.0 : 8.0),
+                          SizedBox(height: isDesktop ? 20.0 : 15.0),
+                          Text(
+                            "Description",
+                            style: TextStyle(
+                              fontSize: titleFontSize - 4,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: isDesktop ? 10.0 : 8.0),
                           Text(
                             widget.product['description'] ??
-                                'No description available',
+                                'No description available for this product.',
                             style: TextStyle(
                               fontSize: bodyFontSize,
                               color: Colors.grey[700],
-                              height: 1.5,
-                            ),
-                            maxLines: _isExpanded ? null : 3,
-                            overflow: _isExpanded
-                                ? null
-                                : TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: isSmallScreen ? 6.0 : 8.0),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _isExpanded = !_isExpanded;
-                              });
-                            },
-                            child: Text(
-                              _isExpanded ? 'Read less' : 'Read more',
-                              style: TextStyle(
-                                color: AppColors.main,
-                                fontWeight: FontWeight.bold,
-                                fontSize: isDesktop ? 16 : 14,
-                              ),
                             ),
                           ),
-
-                          SizedBox(height: isDesktop ? 25.0 : 20.0),
-
-                          // Specifications
-                          if (widget.product['specifications'] != null) ...[
-                            Text(
-                              "Specifications",
-                              style: TextStyle(
-                                fontSize: isDesktop
-                                    ? 22
-                                    : isTablet
-                                    ? 20
-                                    : 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: isDesktop ? 15.0 : 10.0),
-                            _buildSpecifications(
-                              widget.product['specifications'],
-                              isDesktop,
-                              isTablet,
-                              isSmallScreen,
-                            ),
-                          ],
                         ],
                       ),
                     ),
-
                     SizedBox(height: isDesktop ? 25.0 : 20.0),
-
-                    // Quantity Selector
                     Container(
                       margin: EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
@@ -886,11 +954,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                     size: isDesktop ? 24 : 20,
                                   ),
                                   onPressed: () {
-                                    if (_quantity > 1) {
+                                    if (_quantity > 1)
                                       setState(() {
                                         _quantity--;
                                       });
-                                    }
                                   },
                                 ),
                                 Container(
@@ -928,7 +995,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
                     SizedBox(height: isDesktop ? 25.0 : 20.0),
 
-                    // Reviews Section
+                    // Reviews Section now uses StreamBuilder
                     Container(
                       margin: EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
@@ -977,160 +1044,254 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             ],
                           ),
                           SizedBox(height: isDesktop ? 15.0 : 10.0),
-                          Row(
-                            children: [
-                              Text(
-                                _averageRating.toStringAsFixed(1),
-                                style: TextStyle(
-                                  fontSize: isDesktop
-                                      ? 40
-                                      : isTablet
-                                      ? 36
-                                      : 32,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(width: isDesktop ? 12 : 8),
-                              Column(
+                          StreamBuilder<QuerySnapshot>(
+                            stream: _reviewsStream,
+                            builder: (context, snapshot) {
+                              // Handle loading state with a timeout
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                // Use a FutureBuilder to add a timeout
+                                return FutureBuilder(
+                                  future: Future.delayed(
+                                    const Duration(seconds: 2),
+                                  ),
+                                  builder: (context, timeoutSnapshot) {
+                                    if (timeoutSnapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return const Center(
+                                        child: CircularProgressIndicator(),
+                                      );
+                                    } else {
+                                      // If timeout occurs, show no reviews message
+                                      return const Text(
+                                        'No reviews yet. Be the first to review!',
+                                      );
+                                    }
+                                  },
+                                );
+                              }
+
+                              // Handle error state
+                              if (snapshot.hasError) {
+                                return const Text(
+                                  'Error loading reviews. Please try again later.',
+                                );
+                              }
+
+                              // Handle no data state
+                              if (!snapshot.hasData ||
+                                  snapshot.data!.docs.isEmpty) {
+                                return const Text(
+                                  'No reviews yet. Be the first to review!',
+                                );
+                              }
+
+                              final reviews = snapshot.data!.docs;
+                              double totalRating = 0.0;
+                              for (var doc in reviews) {
+                                totalRating +=
+                                    (doc.data()
+                                        as Map<String, dynamic>)['rating'] ??
+                                    0.0;
+                              }
+                              final averageRating = reviews.isEmpty
+                                  ? 0.0
+                                  : totalRating / reviews.length;
+                              final totalReviews = reviews.length;
+
+                              // Rating Summary UI
+                              return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    children: List.generate(5, (index) {
-                                      return Icon(
-                                        index < _averageRating.floor()
-                                            ? Icons.star
-                                            : index < _averageRating
-                                            ? Icons.star_half
-                                            : Icons.star_border,
-                                        color: Colors.amber,
-                                        size: isDesktop
-                                            ? 28
-                                            : isTablet
-                                            ? 24
-                                            : 20,
-                                      );
-                                    }),
+                                    children: [
+                                      Text(
+                                        averageRating.toStringAsFixed(1),
+                                        style: TextStyle(
+                                          fontSize: isDesktop
+                                              ? 40
+                                              : isTablet
+                                              ? 36
+                                              : 32,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: isDesktop ? 12 : 8),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: List.generate(5, (index) {
+                                              return Icon(
+                                                index < averageRating.floor()
+                                                    ? Icons.star
+                                                    : index < averageRating
+                                                    ? Icons.star_half
+                                                    : Icons.star_border,
+                                                color: Colors.amber,
+                                                size: isDesktop
+                                                    ? 28
+                                                    : isTablet
+                                                    ? 24
+                                                    : 20,
+                                              );
+                                            }),
+                                          ),
+                                          Text(
+                                            "$totalReviews reviews",
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                              fontSize: isDesktop
+                                                  ? 18
+                                                  : isTablet
+                                                  ? 16
+                                                  : 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    "$_totalReviews reviews",
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: isDesktop
-                                          ? 18
-                                          : isTablet
-                                          ? 16
-                                          : 14,
-                                    ),
+                                  SizedBox(height: isDesktop ? 25.0 : 20.0),
+
+                                  // Reviews List - Show all reviews without limiting to 3
+                                  ListView.separated(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount:
+                                        reviews.length, // Show all reviews
+                                    separatorBuilder: (context, index) =>
+                                        const Divider(),
+                                    itemBuilder: (context, index) {
+                                      final reviewData =
+                                          reviews[index].data()
+                                              as Map<String, dynamic>;
+                                      final timestamp =
+                                          reviewData['timestamp'] as Timestamp?;
+                                      final date = timestamp != null
+                                          ? _formatDate(timestamp.toDate())
+                                          : 'Unknown date';
+
+                                      return Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: isDesktop ? 12.0 : 8.0,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  reviewData['userName'] ??
+                                                      'Anonymous',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: isDesktop
+                                                        ? 18
+                                                        : isTablet
+                                                        ? 16
+                                                        : 14,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  date,
+                                                  style: TextStyle(
+                                                    color: Colors.grey[600],
+                                                    fontSize: isDesktop
+                                                        ? 16
+                                                        : isTablet
+                                                        ? 14
+                                                        : 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(
+                                              height: isDesktop ? 6.0 : 4.0,
+                                            ),
+                                            Row(
+                                              children: List.generate(5, (
+                                                index,
+                                              ) {
+                                                return Icon(
+                                                  index < reviewData['rating']
+                                                      ? Icons.star
+                                                      : Icons.star_border,
+                                                  color: Colors.amber,
+                                                  size: isDesktop
+                                                      ? 22
+                                                      : isTablet
+                                                      ? 18
+                                                      : 16,
+                                                );
+                                              }),
+                                            ),
+                                            SizedBox(
+                                              height: isDesktop ? 12.0 : 8.0,
+                                            ),
+
+                                            // Display image if available
+                                            if (reviewData['imageBase64'] !=
+                                                null)
+                                              Container(
+                                                margin: EdgeInsets.only(
+                                                  bottom: isDesktop
+                                                      ? 12.0
+                                                      : 8.0,
+                                                ),
+                                                height: 150,
+                                                width: double.infinity,
+                                                child: Image.memory(
+                                                  base64Decode(
+                                                    reviewData['imageBase64'],
+                                                  ),
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder:
+                                                      (
+                                                        context,
+                                                        error,
+                                                        stackTrace,
+                                                      ) => const Icon(
+                                                        Icons.broken_image,
+                                                      ),
+                                                ),
+                                              ),
+
+                                            Text(
+                                              reviewData['comment'] ?? '',
+                                              style: TextStyle(
+                                                fontSize: isDesktop
+                                                    ? 18
+                                                    : isTablet
+                                                    ? 16
+                                                    : 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: isDesktop ? 25.0 : 20.0),
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _reviews.length > 3
-                                ? 3
-                                : _reviews.length,
-                            separatorBuilder: (context, index) =>
-                                const Divider(),
-                            itemBuilder: (context, index) {
-                              final review = _reviews[index];
-                              return Padding(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isDesktop ? 12.0 : 8.0,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          review['name'],
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: isDesktop
-                                                ? 18
-                                                : isTablet
-                                                ? 16
-                                                : 14,
-                                          ),
-                                        ),
-                                        Text(
-                                          review['date'],
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: isDesktop
-                                                ? 16
-                                                : isTablet
-                                                ? 14
-                                                : 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: isDesktop ? 6.0 : 4.0),
-                                    Row(
-                                      children: List.generate(5, (index) {
-                                        return Icon(
-                                          index < review['rating']
-                                              ? Icons.star
-                                              : Icons.star_border,
-                                          color: Colors.amber,
-                                          size: isDesktop
-                                              ? 22
-                                              : isTablet
-                                              ? 18
-                                              : 16,
-                                        );
-                                      }),
-                                    ),
-                                    SizedBox(height: isDesktop ? 12.0 : 8.0),
-                                    Text(
-                                      review['comment'],
-                                      style: TextStyle(
-                                        fontSize: isDesktop
-                                            ? 18
-                                            : isTablet
-                                            ? 16
-                                            : 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
                               );
                             },
                           ),
-                          if (_reviews.length > 3)
-                            TextButton(
-                              onPressed: () {
-                                // Navigate to all reviews screen
-                              },
-                              child: Text(
-                                "View all reviews",
-                                style: TextStyle(
-                                  color: AppColors.main,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: isDesktop ? 16 : 14,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                     ),
-
-                    // Add extra space at bottom to ensure content doesn't get hidden behind fixed buttons
                     SizedBox(height: isDesktop ? 30.0 : 20.0),
                   ],
                 ),
               ),
             ),
           ),
-
-          // 🔥 Fully Responsive Fixed Buttons at Bottom
+          // Fixed buttons at bottom
           Positioned(
             bottom: 0,
             left: 0,
@@ -1138,52 +1299,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             child: LayoutBuilder(
               builder: (context, constraints) {
                 double screenWidth = constraints.maxWidth;
-                double screenHeight = MediaQuery.of(context).size.height;
-
-                // Define breakpoints
                 bool isMobile = screenWidth < 600;
                 bool isTablet = screenWidth >= 600 && screenWidth < 1024;
                 bool isDesktop = screenWidth >= 1024;
-
-                // Dynamic padding and sizes
-                double horizontalPadding = isDesktop
-                    ? screenWidth * 0.1
-                    : isTablet
-                    ? screenWidth * 0.06
-                    : screenWidth * 0.05;
 
                 double buttonHeight = isDesktop
                     ? 56
                     : isTablet
                     ? 50
-                    : 45;
-
-                double iconSize = isDesktop
+                    : 46;
+                double spacing = isDesktop
                     ? 24
                     : isTablet
-                    ? 22
-                    : 20;
-
+                    ? 18
+                    : 14;
                 double fontSize = isDesktop
                     ? 16
                     : isTablet
                     ? 14
                     : 12;
 
-                double spacing = isDesktop
-                    ? 24
-                    : isTablet
-                    ? 20
-                    : 14;
-
                 return Container(
-                  padding: EdgeInsets.all(
-                    isDesktop
-                        ? 20
-                        : isTablet
-                        ? 16
-                        : 12,
-                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
@@ -1194,100 +1330,105 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1200),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: horizontalPadding,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // 🛒 Add to Cart Button
-                            Expanded(
-                              child: Container(
-                                height: buttonHeight,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(color: AppColors.main),
-                                ),
-                                child: OutlinedButton.icon(
-                                  onPressed: _addToCart,
-                                  icon: Icon(
-                                    Icons.shopping_cart_outlined,
-                                    size: iconSize,
-                                    color: AppColors.main,
-                                  ),
-                                  label: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      "ADD TO CART",
-                                      style: TextStyle(
-                                        color: AppColors.main,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: fontSize,
-                                      ),
-                                    ),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isMobile ? 8 : 16,
-                                    ),
-                                    side: BorderSide.none,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                  ),
-                                ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop
+                        ? screenWidth * 0.1
+                        : isTablet
+                        ? screenWidth * 0.06
+                        : screenWidth * 0.05,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    children: [
+                      // 🛒 Add to Cart Button
+                      Expanded(
+                        child: SizedBox(
+                          height: buttonHeight,
+                          child: OutlinedButton.icon(
+                            onPressed: _addToCart,
+                            icon: Icon(
+                              Icons.shopping_cart_outlined,
+                              color: AppColors.main,
+                              size: fontSize + 4,
+                            ),
+                            label: Text(
+                              "Add to Cart",
+                              style: TextStyle(
+                                color: AppColors.main,
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-
-                            SizedBox(width: spacing),
-
-                            // ⚡ Buy Now Button
-                            Expanded(
-                              child: Container(
-                                height: buttonHeight,
-                                decoration: BoxDecoration(
-                                  color: AppColors.main,
-                                  borderRadius: BorderRadius.circular(30),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.main.withOpacity(0.3),
-                                      spreadRadius: 0,
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: _buyNow,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      "BUY NOW",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: fontSize,
-                                      ),
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                  ),
-                                ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: AppColors.main,
+                                width: 1.5,
                               ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              backgroundColor: Colors.white,
+                              foregroundColor: AppColors.main,
+                              overlayColor: AppColors.main.withOpacity(0.1),
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
+                      SizedBox(width: spacing),
+
+                      // 💳 Buy Now Button
+                      Expanded(
+                        child: SizedBox(
+                          height: buttonHeight,
+                          child: ElevatedButton(
+                            onPressed: _buyNow,
+                            style:
+                                ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  backgroundColor: AppColors.main,
+                                  shadowColor: AppColors.main.withOpacity(0.3),
+                                  elevation: 5,
+                                ).copyWith(
+                                  backgroundColor:
+                                      WidgetStateProperty.resolveWith((states) {
+                                        if (states.contains(
+                                          WidgetState.pressed,
+                                        )) {
+                                          return AppColors.main.withOpacity(
+                                            0.8,
+                                          );
+                                        }
+                                        return AppColors.main;
+                                      }),
+                                ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.flash_on,
+                                  color: Colors.white,
+                                  size: fontSize + 4,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "BUY NOW",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: fontSize + 1,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -1298,54 +1439,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  Widget _buildSpecifications(
-    Map<String, dynamic> specs,
-    bool isDesktop,
-    bool isTablet,
-    bool isSmallScreen,
-  ) {
-    return Column(
-      children: specs.entries.map((entry) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: isDesktop ? 8.0 : 6.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: isDesktop
-                    ? 160
-                    : isTablet
-                    ? 140
-                    : 120,
-                child: Text(
-                  "${entry.key}:",
-                  style: TextStyle(
-                    fontSize: isDesktop
-                        ? 18
-                        : isTablet
-                        ? 16
-                        : 15,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  entry.value.toString(),
-                  style: TextStyle(
-                    fontSize: isDesktop
-                        ? 18
-                        : isTablet
-                        ? 16
-                        : 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
+  // Helper widget to avoid repetition
+  Widget _buildRatingWidget(double rating, int count) {
+    final isDesktop = MediaQuery.of(context).size.width >= 1000;
+    final isTablet =
+        MediaQuery.of(context).size.width >= 600 &&
+        MediaQuery.of(context).size.width < 1000;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.main.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.star, color: Colors.amber[600], size: isDesktop ? 22 : 18),
+          const SizedBox(width: 4),
+          Text(
+            rating.toStringAsFixed(1),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isDesktop ? 16 : 14,
+            ),
           ),
-        );
-      }).toList(),
+        ],
+      ),
     );
   }
 }

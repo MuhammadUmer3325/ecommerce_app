@@ -7,6 +7,7 @@ import 'package:rxdart/rxdart.dart'; // 👈 for combineLatest
 import 'package:laptop_harbor/admin/screens/orders_screen.dart';
 import 'package:laptop_harbor/admin/screens/products_screen.dart';
 import 'package:laptop_harbor/admin/screens/users_screen.dart';
+import 'package:laptop_harbor/admin/screens/reviews_screen.dart'; // Added import
 import 'package:laptop_harbor/screens/home_screen.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -89,6 +90,9 @@ class DashboardScreen extends StatelessWidget {
       builder: (context, snapshot) {
         final productsCount = snapshot.hasData ? snapshot.data![0] : 0;
         final ordersCount = snapshot.hasData ? snapshot.data![1] : 0;
+        final reviewsCount = snapshot.hasData
+            ? snapshot.data![2]
+            : 0; // Added reviews count
         final usersCount = 0; // Users collection not added yet
         final revenue = 0; // Revenue not implemented yet
 
@@ -112,6 +116,17 @@ class DashboardScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const OrdersScreen()),
+              );
+            },
+          },
+          {
+            'title': 'Reviews',
+            'count': reviewsCount,
+            'icon': Icons.rate_review,
+            'onTap': () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReviewsScreen()),
               );
             },
           },
@@ -151,7 +166,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  /// ✅ Realtime combined stream for products & orders count using RxDart
+  /// ✅ Realtime combined stream for products, orders & reviews count using RxDart
   Stream<List<int>> _fetchStatsStream() {
     final productsStream = FirebaseFirestore.instance
         .collection('products')
@@ -163,10 +178,20 @@ class DashboardScreen extends StatelessWidget {
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
 
-    return Rx.combineLatest2<int, int, List<int>>(
+    final reviewsStream = FirebaseFirestore.instance
+        .collection('reviews')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+
+    return Rx.combineLatest3<int, int, int, List<int>>(
       productsStream,
       ordersStream,
-      (productsCount, ordersCount) => [productsCount, ordersCount],
+      reviewsStream,
+      (productsCount, ordersCount, reviewsCount) => [
+        productsCount,
+        ordersCount,
+        reviewsCount,
+      ],
     );
   }
 
@@ -454,6 +479,19 @@ Widget buildAdminDrawer(BuildContext context, User? adminUser) {
                             context,
                             MaterialPageRoute(
                               builder: (_) => const OrdersScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1),
+                      _adminDrawerItem(
+                        Icons.rate_review_outlined,
+                        "Reviews",
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ReviewsScreen(),
                             ),
                           );
                         },
