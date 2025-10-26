@@ -108,6 +108,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     print('Fetching reviews for product ID: $_productId');
     print('Product name: ${widget.product['name']}');
 
+    // First, let's try to get all reviews to see what's in the collection
+    FirebaseFirestore.instance.collection('reviews').get().then((allReviews) {
+      print('Total reviews in collection: ${allReviews.docs.length}');
+      for (var doc in allReviews.docs) {
+        print('Review doc ID: ${doc.id}, productId: ${doc['productId']}');
+      }
+    });
+
+    // Now, let's set up the stream for the specific product
     FirebaseFirestore.instance
         .collection('reviews')
         .where('productId', isEqualTo: _productId)
@@ -443,6 +452,35 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
   // Dialog to add review with image picker
   void _showAddReviewDialog() {
+    // Check if user is logged in before showing the dialog
+    if (!_isLoggedIn) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Login Required'),
+          content: const Text('You need to login to add a review.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.main),
+              child: const Text('Login'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1030,61 +1068,105 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              TextButton(
-                                onPressed: _showAddReviewDialog,
-                                child: Text(
-                                  "Add Review",
-                                  style: TextStyle(
-                                    color: AppColors.main,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: isDesktop ? 16 : 14,
-                                  ),
-                                ),
-                              ),
+                              // Modified Add Review button - only enabled if user is logged in
+                              _isLoggedIn
+                                  ? TextButton(
+                                      onPressed: _showAddReviewDialog,
+                                      child: Text(
+                                        "Add Review",
+                                        style: TextStyle(
+                                          color: AppColors.main,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: isDesktop ? 16 : 14,
+                                        ),
+                                      ),
+                                    )
+                                  : TextButton.icon(
+                                      onPressed: () {
+                                        // Show login prompt when not logged in
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Login Required'),
+                                            content: const Text(
+                                              'You need to login to add a review.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.of(context).pop(),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () {
+                                                  Navigator.of(context).pop();
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          const LoginScreen(),
+                                                    ),
+                                                  );
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      AppColors.main,
+                                                ),
+                                                child: const Text('Login'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                      icon: Icon(
+                                        Icons.login,
+                                        size: isDesktop ? 16 : 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                      label: Text(
+                                        "Login to Review",
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: isDesktop ? 16 : 14,
+                                        ),
+                                      ),
+                                    ),
                             ],
                           ),
                           SizedBox(height: isDesktop ? 15.0 : 10.0),
                           StreamBuilder<QuerySnapshot>(
                             stream: _reviewsStream,
                             builder: (context, snapshot) {
-                              // Handle loading state with a timeout
+                              // Debug output
+                              print(
+                                'StreamBuilder state: ${snapshot.connectionState}',
+                              );
+                              if (snapshot.hasError) {
+                                print('StreamBuilder error: ${snapshot.error}');
+                                return Text('Error: ${snapshot.error}');
+                              }
+
                               if (snapshot.connectionState ==
                                   ConnectionState.waiting) {
-                                // Use a FutureBuilder to add a timeout
-                                return FutureBuilder(
-                                  future: Future.delayed(
-                                    const Duration(seconds: 2),
-                                  ),
-                                  builder: (context, timeoutSnapshot) {
-                                    if (timeoutSnapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return const Center(
-                                        child: CircularProgressIndicator(),
-                                      );
-                                    } else {
-                                      // If timeout occurs, show no reviews message
-                                      return const Text(
-                                        'No reviews yet. Be the first to review!',
-                                      );
-                                    }
-                                  },
+                                return const Center(
+                                  child: CircularProgressIndicator(),
                                 );
                               }
 
-                              // Handle error state
-                              if (snapshot.hasError) {
-                                return const Text(
-                                  'Error loading reviews. Please try again later.',
-                                );
-                              }
-
-                              // Handle no data state
                               if (!snapshot.hasData ||
                                   snapshot.data!.docs.isEmpty) {
+                                print(
+                                  'No reviews found for product ID: $_productId',
+                                );
                                 return const Text(
                                   'No reviews yet. Be the first to review!',
                                 );
                               }
+
+                              print(
+                                'Found ${snapshot.data!.docs.length} reviews in StreamBuilder',
+                              );
 
                               final reviews = snapshot.data!.docs;
                               double totalRating = 0.0;
