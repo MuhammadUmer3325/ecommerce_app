@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
@@ -462,15 +463,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Checkout",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: AppColors.dark),
         elevation: 0,
       ),
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color.fromARGB(255, 241, 241, 241),
       body: _isLoading
           ? const Center(
               child: Column(

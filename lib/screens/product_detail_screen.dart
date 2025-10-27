@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:convert'; // For Base64 encoding/decoding
-import 'dart:io'; // For File handling
-import 'dart:typed_data'; // For Uint8List
-import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
@@ -25,11 +25,10 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen>
     with TickerProviderStateMixin {
   final Cart _cart = Cart.instance;
-  final ImagePicker _picker = ImagePicker(); // Image picker instance
-  dynamic _selectedImage; // Changed to dynamic to handle both File and XFile
-  String? _base64String; // To store the Base64 string of the image
+  final ImagePicker _picker = ImagePicker();
+  dynamic _selectedImage;
+  String? _base64String;
 
-  // Add a controller for the reviews stream
   late StreamController<QuerySnapshot> _reviewsStreamController;
   late Stream<QuerySnapshot> _reviewsStream;
 
@@ -604,12 +603,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 TextField(
                   controller: _reviewController,
                   decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white, // ✅ White background
                     labelText: 'Your Review',
                     hintText: 'Share your experience...',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  style: const TextStyle(color: Colors.black), // ✅ Dark text
                   maxLines: 3,
                 ),
               ],
@@ -874,6 +876,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                           'Unnamed Product',
                                       style: TextStyle(
                                         fontSize: titleFontSize,
+                                        color: AppColors.dark,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -882,7 +885,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                       widget.product['brand'] ?? 'Unknown',
                                       style: TextStyle(
                                         fontSize: subtitleFontSize,
-                                        color: Colors.grey[600],
+                                        color: AppColors.dark,
                                       ),
                                     ),
                                   ],
@@ -976,6 +979,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   ? 18
                                   : 16,
                               fontWeight: FontWeight.bold,
+                              color: AppColors.dark,
                             ),
                           ),
                           const Spacer(),
@@ -1066,6 +1070,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                       ? 20
                                       : 18,
                                   fontWeight: FontWeight.bold,
+                                  color: AppColors.dark,
                                 ),
                               ),
                               // Modified Add Review button - only enabled if user is logged in
@@ -1279,12 +1284,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                                         : isTablet
                                                         ? 16
                                                         : 14,
+                                                    color: AppColors.dark,
                                                   ),
                                                 ),
                                                 Text(
                                                   date,
                                                   style: TextStyle(
-                                                    color: Colors.grey[600],
+                                                    color: AppColors.dark,
                                                     fontSize: isDesktop
                                                         ? 16
                                                         : isTablet
@@ -1353,6 +1359,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                                     : isTablet
                                                     ? 16
                                                     : 14,
+                                                color: AppColors.dark,
                                               ),
                                             ),
                                           ],

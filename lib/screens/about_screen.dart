@@ -55,9 +55,9 @@ class AboutScreen extends StatelessWidget {
                   Text(
                     "Laptop Harbor",
                     style: GoogleFonts.orbitron(
-                      color: AppColors.dark,
+                      color: const Color.fromARGB(255, 255, 255, 255),
                       fontWeight: FontWeight.bold,
-                      fontSize: 35,
+                      fontSize: 28,
                     ),
                   ),
                   const SizedBox(height: 5),
@@ -230,7 +230,11 @@ class AboutScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Icon(Icons.check_circle, color: Colors.green[500], size: 20),
+          Icon(
+            Icons.check_circle,
+            color: const Color.fromARGB(255, 37, 37, 37),
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

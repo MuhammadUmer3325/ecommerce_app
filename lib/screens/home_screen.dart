@@ -282,12 +282,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                 // Cart Icon with Badge
+                // Cart Icon with Badge
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
                     onTap: () {
                       setState(() {
                         _selectedIndex = 1; // Navigate to cart
+                        // Reset search when navigating to cart
+                        _isSearchVisible = false;
+                        _searchController.clear();
+                        searchQuery = '';
                       });
                     },
                     child: SizedBox(
@@ -747,8 +752,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     final imageUrl = product['imageUrl'] ?? '';
                     final productId = products[index].id;
 
+                    // Create productWithId to pass to ProductDetailScreen
+                    final productWithId = Map<String, dynamic>.from(product);
+                    productWithId['id'] = productId;
+
                     return GestureDetector(
-                      onTap: () {},
+                      onTap: () {
+                        // Navigate to product detail screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ProductDetailScreen(product: productWithId),
+                          ),
+                        );
+                      },
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
@@ -856,12 +874,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                           onPressed: stock == 0
                                               ? null
                                               : () {
-                                                  final productWithId =
-                                                      Map<String, dynamic>.from(
-                                                        product,
-                                                      );
-                                                  productWithId['id'] =
-                                                      productId;
                                                   Cart.instance.addItem(
                                                     productWithId,
                                                   );
@@ -1336,7 +1348,7 @@ class _HomeBody extends StatelessWidget {
                       child: Text(
                         "Featured Products",
                         style: TextStyle(
-                          fontSize: isMobile ? 16 : 20,
+                          fontSize: isMobile ? 20 : 24,
                           fontWeight: FontWeight.bold,
                           color: AppColors.main,
                         ),
