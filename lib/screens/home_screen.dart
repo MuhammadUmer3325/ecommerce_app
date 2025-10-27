@@ -15,6 +15,7 @@ import 'package:laptop_harbor/screens/my_orders_screen.dart';
 import 'package:laptop_harbor/screens/product_detail_screen.dart';
 import 'package:laptop_harbor/screens/profile_detail_screen.dart';
 import 'package:laptop_harbor/screens/track_order_screen.dart';
+import 'dart:convert'; // Add this import for base64 decoding
 
 // ===================== CART LOGIC =====================
 class Cart extends ChangeNotifier {
@@ -83,6 +84,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   User? _currentUser;
+  Map<String, dynamic>? _userData; // Added to store user data from Firestore
   bool _isSearchVisible = false;
   final TextEditingController _searchController = TextEditingController();
   String searchQuery = '';
@@ -105,9 +107,37 @@ class _HomeScreenState extends State<HomeScreen> {
     FirebaseAuth.instance.authStateChanges().listen((user) {
       setState(() {
         _currentUser = user;
+        if (user != null) {
+          _fetchUserData(); // Fetch user data when user changes
+        } else {
+          _userData = null; // Clear user data when user logs out
+        }
       });
     });
     _currentUser = FirebaseAuth.instance.currentUser;
+    if (_currentUser != null) {
+      _fetchUserData(); // Fetch user data on initial load
+    }
+  }
+
+  // Added method to fetch user data from Firestore
+  Future<void> _fetchUserData() async {
+    if (_currentUser == null) return;
+
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .get();
+
+      if (userDoc.exists) {
+        setState(() {
+          _userData = userDoc.data() as Map<String, dynamic>;
+        });
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+    }
   }
 
   void _onItemTapped(int index) {
@@ -432,11 +462,20 @@ class _HomeScreenState extends State<HomeScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: ListTile(
-                              leading: const CircleAvatar(
+                              leading: CircleAvatar(
                                 radius: 24,
-                                backgroundImage: AssetImage(
-                                  "assets/images/profile.png",
-                                ),
+                                backgroundImage:
+                                    _userData?['profileImage'] != null &&
+                                        _userData!['profileImage'].isNotEmpty
+                                    ? MemoryImage(
+                                        base64Decode(
+                                          _userData!['profileImage'],
+                                        ),
+                                      )
+                                    : const AssetImage(
+                                            "assets/images/profile.png",
+                                          )
+                                          as ImageProvider,
                               ),
                               title: Text(
                                 _currentUser?.email ?? "Guest User",
@@ -515,7 +554,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          const ProfileDetailsScreen(),
+                                          const ProfileScreen(),
                                     ),
                                   ),
                                 ),

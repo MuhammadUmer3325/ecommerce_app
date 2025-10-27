@@ -1,187 +1,133 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:laptop_harbor/core/constants/app_constants.dart';
 
-class ProfileDetailsScreen extends StatefulWidget {
-  const ProfileDetailsScreen({Key? key}) : super(key: key);
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({Key? key}) : super(key: key);
 
   @override
-  State<ProfileDetailsScreen> createState() => _ProfileDetailsScreenState();
+  _ProfileScreenState createState() => _ProfileScreenState();
 }
 
-class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _bioController = TextEditingController();
+class _ProfileScreenState extends State<ProfileScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
 
+  String? _profileImageBase64;
+  dynamic _selectedImage;
+  bool _isLoading = true;
   bool _isEditing = false;
-  bool _isLoading = false;
-  bool _isUploadingImage = false;
-  File? _profileImage;
-  String? _profileImageUrl;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  Future<void> _fetchUserData() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        DocumentSnapshot userDoc =
+            await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+        if (userDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          setState(() {
+            _nameController.text = userData['name'] ?? '';
+            _emailController.text = userData['email'] ?? '';
+            _phoneController.text = userData['phone'] ?? '';
+            _profileImageBase64 = userData['profileImage'] ?? '';
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        print("Data fetch error: $e");
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    final XFile? pickedFile =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (pickedFile != null) {
+      Uint8List imageBytes = await pickedFile.readAsBytes();
+      String base64String = base64Encode(imageBytes);
+      setState(() {
+        if (kIsWeb) {
+          _selectedImage = pickedFile;
+        } else {
+          _selectedImage = File(pickedFile.path);
+        }
+        _profileImageBase64 = base64String;
+      });
+    }
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    final XFile? pickedFile =
+        await _picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    if (pickedFile != null) {
+      Uint8List imageBytes = await pickedFile.readAsBytes();
+      String base64String = base64Encode(imageBytes);
+      setState(() {
+        if (kIsWeb) {
+          _selectedImage = pickedFile;
+        } else {
+          _selectedImage = File(pickedFile.path);
+        }
+        _profileImageBase64 = base64String;
+      });
+    }
+  }
+
+  Future<void> _updateUserData() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      Map<String, dynamic> updatedData = {
+        'name': _nameController.text,
+        'email': _emailController.text,
+        'phone': _phoneController.text,
+      };
+
+      if (_profileImageBase64 != null && _profileImageBase64!.isNotEmpty) {
+        updatedData['profileImage'] = _profileImageBase64;
+      }
+
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update(updatedData);
+        setState(() {
+          _isEditing = false;
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully!')),
+        );
+      } catch (e) {
+        print("Update error: $e");
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update profile.')),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _checkUserLoginStatus();
-  }
-
-  void _checkUserLoginStatus() {
-    final user = _auth.currentUser;
-    if (user == null) {
-      // User is not logged in, navigate to login screen
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacementNamed('/login');
-      });
-    } else {
-      _loadUserData();
-    }
-  }
-
-  Future<void> _loadUserData() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        // Get data from Firestore
-        final userDoc = await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (userDoc.exists) {
-          final userData = userDoc.data() as Map<String, dynamic>;
-          setState(() {
-            _emailController.text = user.email ?? '';
-            _nameController.text = userData['name'] ?? user.displayName ?? '';
-            _phoneController.text = userData['phone'] ?? '';
-            _addressController.text = userData['address'] ?? '';
-            _bioController.text = userData['bio'] ?? '';
-            _profileImageUrl = userData['profileImageUrl'];
-          });
-        } else {
-          // If user document doesn't exist, use data from Firebase Auth
-          setState(() {
-            _emailController.text = user.email ?? '';
-            _nameController.text = user.displayName ?? '';
-            _phoneController.text = '';
-            _addressController.text = '';
-            _bioController.text = '';
-          });
-        }
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ Error loading profile: $e')));
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 75,
-    );
-    if (pickedFile != null) {
-      setState(() {
-        _profileImage = File(pickedFile.path);
-      });
-    }
-  }
-
-  Future<String?> _uploadProfileImage() async {
-    if (_profileImage == null) return _profileImageUrl;
-
-    setState(() => _isUploadingImage = true);
-
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return null;
-
-      final ref = _storage
-          .ref()
-          .child('profile_images')
-          .child('${user.uid}.jpg');
-      await ref.putFile(_profileImage!);
-      return await ref.getDownloadURL();
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ Error uploading image: $e')));
-      return null;
-    } finally {
-      setState(() => _isUploadingImage = false);
-    }
-  }
-
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        // Upload image if changed
-        final imageUrl = await _uploadProfileImage();
-
-        // Update Firebase Auth
-        await user.updateDisplayName(_nameController.text);
-
-        // Update Firestore
-        await _firestore.collection('users').doc(user.uid).set({
-          'name': _nameController.text,
-          'email': _emailController.text,
-          'phone': _phoneController.text,
-          'address': _addressController.text,
-          'bio': _bioController.text,
-          'profileImageUrl': imageUrl ?? _profileImageUrl,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
-        setState(() {
-          _isEditing = false;
-          _profileImageUrl = imageUrl ?? _profileImageUrl;
-          _profileImage = null;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Profile updated successfully')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ Error updating profile: $e')));
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _logout() async {
-    try {
-      await _auth.signOut();
-      Navigator.of(context).pushReplacementNamed('/login');
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ Error logging out: $e')));
-    }
+    _fetchUserData();
   }
 
   @override
@@ -189,338 +135,274 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
-    _bioController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
-        elevation: 0,
-        backgroundColor: AppColors.light,
-        foregroundColor: Colors.white,
-        title: const Text('My Profile'),
+        backgroundColor: Colors.white,
+        elevation: 2,
+        title: const Text(
+          'My Profile',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+          ),
+        ),
         centerTitle: true,
         actions: [
           if (!_isEditing)
             IconButton(
-              icon: const Icon(Icons.logout_rounded),
-              onPressed: _logout,
+              icon: const Icon(Icons.edit, color: Colors.blueAccent),
+              onPressed: () => setState(() => _isEditing = true),
+            )
+          else ...[
+            IconButton(
+              icon: const Icon(Icons.save, color: Colors.green),
+              onPressed: _updateUserData,
             ),
-          IconButton(
-            icon: Icon(_isEditing ? Icons.save_rounded : Icons.edit_rounded),
-            onPressed: _isEditing
-                ? _saveProfile
-                : () => setState(() => _isEditing = true),
-          ),
+            IconButton(
+              icon: const Icon(Icons.cancel, color: Colors.redAccent),
+              onPressed: () {
+                _fetchUserData();
+                setState(() {
+                  _isEditing = false;
+                });
+              },
+            ),
+          ],
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadUserData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 20,
-                ),
-                child: Column(
-                  children: [
-                    // Profile Image Section
-                    Stack(
-                      alignment: Alignment.bottomRight,
+          : SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+                  // Profile Picture
+                  GestureDetector(
+                    onTap: _isEditing ? () => _showImagePickerBottomSheet() : null,
+                    child: Stack(
                       children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: colorScheme.primary,
-                              width: 3,
-                            ),
-                          ),
+                        Hero(
+                          tag: 'profileImage',
                           child: CircleAvatar(
-                            radius: 70,
+                            radius: 65,
                             backgroundColor: Colors.grey[300],
-                            backgroundImage: _profileImage != null
-                                ? FileImage(_profileImage!) as ImageProvider
-                                : _profileImageUrl != null
-                                ? NetworkImage(_profileImageUrl!)
-                                      as ImageProvider
-                                : const AssetImage('assets/images/profile.png')
-                                      as ImageProvider,
+                            backgroundImage: _getProfileImage(),
+                            child: (_profileImageBase64 == null ||
+                                    _profileImageBase64!.isEmpty)
+                                ? const Icon(Icons.person, size: 65, color: Colors.grey)
+                                : null,
                           ),
                         ),
                         if (_isEditing)
                           Positioned(
                             bottom: 4,
                             right: 4,
-                            child: GestureDetector(
-                              onTap: _pickImage,
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: colorScheme.primary,
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (_isUploadingImage)
-                          Positioned.fill(
                             child: Container(
                               decoration: BoxDecoration(
+                                color: Colors.blueAccent,
                                 shape: BoxShape.circle,
-                                color: Colors.black.withOpacity(0.5),
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.blueAccent.withOpacity(0.4),
+                                    blurRadius: 6,
                                   ),
-                                ),
+                                ],
+                              ),
+                              child: const Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Icon(Icons.camera_alt,
+                                    color: Colors.white, size: 20),
                               ),
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 30),
+                  ),
+                  const SizedBox(height: 30),
 
-                    // Profile Information Card
-                    Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              // Name Field
-                              TextFormField(
-                                controller: _nameController,
-                                enabled: _isEditing,
-                                decoration: InputDecoration(
-                                  labelText: 'Full Name',
-                                  prefixIcon: const Icon(Icons.person),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  filled: true,
-                                  fillColor: _isEditing
-                                      ? Colors.white
-                                      : Colors.grey[100],
-                                ),
-                                validator: (value) =>
-                                    value == null || value.isEmpty
-                                    ? 'Enter your name'
-                                    : null,
-                              ),
-                              const SizedBox(height: 16),
+                  // Input Fields
+                  _buildInfoCard(
+                    icon: Icons.person,
+                    label: "Full Name",
+                    controller: _nameController,
+                    enabled: _isEditing,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoCard(
+                    icon: Icons.email_rounded,
+                    label: "Email Address",
+                    controller: _emailController,
+                    enabled: _isEditing,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoCard(
+                    icon: Icons.phone,
+                    label: "Phone Number",
+                    controller: _phoneController,
+                    enabled: _isEditing,
+                  ),
+                  const SizedBox(height: 40),
 
-                              // Email Field
-                              TextFormField(
-                                controller: _emailController,
-                                enabled: false,
-                                decoration: InputDecoration(
-                                  labelText: 'Email',
-                                  prefixIcon: const Icon(Icons.email),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.grey[100],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Phone Field
-                              TextFormField(
-                                controller: _phoneController,
-                                enabled: _isEditing,
-                                keyboardType: TextInputType.phone,
-                                decoration: InputDecoration(
-                                  labelText: 'Phone Number',
-                                  prefixIcon: const Icon(Icons.phone),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  filled: true,
-                                  fillColor: _isEditing
-                                      ? Colors.white
-                                      : Colors.grey[100],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Address Field
-                              TextFormField(
-                                controller: _addressController,
-                                enabled: _isEditing,
-                                decoration: InputDecoration(
-                                  labelText: 'Address',
-                                  prefixIcon: const Icon(Icons.home),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  filled: true,
-                                  fillColor: _isEditing
-                                      ? Colors.white
-                                      : Colors.grey[100],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Bio Field
-                              TextFormField(
-                                controller: _bioController,
-                                enabled: _isEditing,
-                                maxLines: 3,
-                                decoration: InputDecoration(
-                                  labelText: 'Bio',
-                                  prefixIcon: const Icon(Icons.info),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  filled: true,
-                                  fillColor: _isEditing
-                                      ? Colors.white
-                                      : Colors.grey[100],
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-
-                              // Action Buttons
-                              if (_isEditing)
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    OutlinedButton.icon(
-                                      onPressed: () {
-                                        setState(() {
-                                          _isEditing = false;
-                                          _loadUserData();
-                                          _profileImage = null;
-                                        });
-                                      },
-                                      icon: const Icon(Icons.cancel_outlined),
-                                      label: const Text('Cancel'),
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                          vertical: 12,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    ElevatedButton.icon(
-                                      onPressed: _saveProfile,
-                                      icon: _isLoading
-                                          ? const SizedBox(
-                                              width: 16,
-                                              height: 16,
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : const Icon(Icons.save_alt_rounded),
-                                      label: Text(
-                                        _isLoading
-                                            ? 'Saving...'
-                                            : 'Save Changes',
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: colorScheme.primary,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                          vertical: 12,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
+                  if (_isEditing)
+                    ElevatedButton.icon(
+                      onPressed: _updateUserData,
+                      icon: const Icon(Icons.save_rounded),
+                      label: const Text("Save Changes"),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                        backgroundColor: Colors.blueAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // Additional Options Card
-                    Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.history),
-                            title: const Text('Order History'),
-                            trailing: const Icon(Icons.arrow_forward_ios),
-                            onTap: () {
-                              // Navigate to order history
-                            },
-                          ),
-                          const Divider(height: 1),
-                          ListTile(
-                            leading: const Icon(Icons.location_on),
-                            title: const Text('Shipping Addresses'),
-                            trailing: const Icon(Icons.arrow_forward_ios),
-                            onTap: () {
-                              // Navigate to shipping addresses
-                            },
-                          ),
-                          const Divider(height: 1),
-                          ListTile(
-                            leading: const Icon(Icons.payment),
-                            title: const Text('Payment Methods'),
-                            trailing: const Icon(Icons.arrow_forward_ios),
-                            onTap: () {
-                              // Navigate to payment methods
-                            },
-                          ),
-                          const Divider(height: 1),
-                          ListTile(
-                            leading: const Icon(Icons.settings),
-                            title: const Text('Settings'),
-                            trailing: const Icon(Icons.arrow_forward_ios),
-                            onTap: () {
-                              // Navigate to settings
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
+                ],
               ),
             ),
     );
   }
+
+  // === Custom styled input field card ===
+Widget _buildInfoCard({
+  required IconData icon,
+  required String label,
+  required TextEditingController controller,
+  required bool enabled,
+}) {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.white, // ✅ Pure white background
+      borderRadius: BorderRadius.circular(14),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 6,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blueAccent, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextFormField(
+              controller: controller,
+              enabled: enabled,
+              style: const TextStyle(
+                color: Colors.black, // ✅ Dark text
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white, // ✅ Input area white background
+                labelText: label,
+                labelStyle: const TextStyle(
+                  color: Colors.black87, // ✅ Dark label text
+                  fontWeight: FontWeight.w500,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                floatingLabelBehavior: FloatingLabelBehavior.auto,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
+
+
+  void _showImagePickerBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Select Profile Picture',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _pickImageFromCamera();
+                  },
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text("Camera"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _pickImageFromGallery();
+                  },
+                  icon: const Icon(Icons.photo_library_rounded),
+                  label: const Text("Gallery"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  ImageProvider? _getProfileImage() {
+    if (_selectedImage != null) {
+      if (kIsWeb) {
+        return NetworkImage(_selectedImage.path);
+      } else {
+        return FileImage(_selectedImage);
+      }
+    } else if (_profileImageBase64 != null && _profileImageBase64!.isNotEmpty) {
+      try {
+        return MemoryImage(base64Decode(_profileImageBase64!));
+      } catch (e) {
+        print("Base64 decode error: $e");
+      }
+    }
+    return null;
+  }
+}
+
