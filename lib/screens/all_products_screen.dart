@@ -27,7 +27,7 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
   String selectedBrand = '';
   String selectedCategory = '';
   double _topFadeOpacity = 0.0;
-  int _selectedIndex = 2; // Set to 2 for All Products tab
+  int _selectedIndex = 2;
 
   RangeValues priceRange = const RangeValues(0, 100000);
   double minPrice = 0;
@@ -62,7 +62,6 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
     _scrollController.addListener(_handleScroll);
     _fetchPriceRange();
 
-    // Set initial brand if provided
     if (widget.initialBrand != null && widget.initialBrand!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         setState(() {
@@ -72,7 +71,6 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
       });
     }
 
-    // Set initial category if provided
     if (widget.initialCategory != null && widget.initialCategory!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         setState(() {
@@ -125,22 +123,20 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
       _selectedIndex = index;
     });
 
-    // Navigate to different screens based on index
     switch (index) {
-      case 0: // Home
+      case 0:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
         break;
-      case 1: // Cart
+      case 1:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const CartScreen()),
         );
         break;
-      case 2: // All Products (already here)
-        // No need to navigate as we're already on this screen
+      case 2:
         break;
     }
   }
@@ -434,7 +430,7 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
 
                           var allProducts = snapshot.data!.docs;
 
-                          // Local search
+                          // ===== Local search =====
                           var filteredProducts = allProducts.where((doc) {
                             final data = doc.data() as Map<String, dynamic>;
                             final name = (data['name'] ?? '')
@@ -487,7 +483,6 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                               final imageUrl = product['imageUrl'] ?? '';
                               final productId = filteredProducts[index].id;
 
-                              // Create product with ID for cart functionality
                               final productWithId = Map<String, dynamic>.from(
                                 product,
                               );

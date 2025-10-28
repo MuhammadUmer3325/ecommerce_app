@@ -14,26 +14,22 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  // Create a local cart instance to ensure proper state management
   late Cart _cart;
-  int _selectedIndex = 1; // Set to 1 for Cart tab
+  int _selectedIndex = 1;
 
   @override
   void initState() {
     super.initState();
     _cart = Cart.instance;
-    // Add a listener to rebuild the UI when cart changes
     _cart.addListener(_onCartChanged);
   }
 
   @override
   void dispose() {
-    // Remove the listener when the widget is disposed
     _cart.removeListener(_onCartChanged);
     super.dispose();
   }
 
-  // This method will be called whenever the cart changes
   void _onCartChanged() {
     if (mounted) {
       setState(() {});
@@ -45,18 +41,16 @@ class _CartScreenState extends State<CartScreen> {
       _selectedIndex = index;
     });
 
-    // Navigate to different screens based on index
     switch (index) {
-      case 0: // Home
+      case 0:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
         break;
-      case 1: // Cart (already here)
-        // No need to navigate as we're already on this screen
+      case 1:
         break;
-      case 2: // All Products
+      case 2:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const AllProductsScreen()),
@@ -174,7 +168,6 @@ class _CartScreenState extends State<CartScreen> {
             )
           : Column(
               children: [
-                // Cart items list
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.all(8.0),
@@ -227,7 +220,6 @@ class _CartScreenState extends State<CartScreen> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Product image
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
                                   child: Image.network(
@@ -251,7 +243,6 @@ class _CartScreenState extends State<CartScreen> {
                                 ),
                                 const SizedBox(width: 15),
 
-                                // Product details
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -287,7 +278,6 @@ class _CartScreenState extends State<CartScreen> {
                                   ),
                                 ),
 
-                                // Quantity controls
                                 Column(
                                   children: [
                                     Container(
@@ -428,7 +418,7 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
 
-                // Checkout section
+                // =========== Checkout Section ===========
                 Container(
                   padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
@@ -449,7 +439,7 @@ class _CartScreenState extends State<CartScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Price details
+                      // ====== Price details ======
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -536,36 +526,9 @@ class _CartScreenState extends State<CartScreen> {
                     ],
                   ),
                 ),
+                // =========== Checkout Section End ===========
               ],
             ),
-
-      // // ======== Bottom nav =========
-      // bottomNavigationBar: BottomNavigationBar(
-      //   currentIndex: _selectedIndex,
-      //   onTap: _onItemTapped,
-      //   type: BottomNavigationBarType.fixed,
-      //   selectedItemColor: AppColors.main,
-      //   unselectedItemColor: AppColors.hint,
-      //   showSelectedLabels: false,
-      //   showUnselectedLabels: false,
-      //   items: const [
-      //     BottomNavigationBarItem(
-      //       icon: Icon(Icons.home_outlined),
-      //       activeIcon: Icon(Icons.home),
-      //       label: "Home",
-      //     ),
-      //     BottomNavigationBarItem(
-      //       icon: Icon(Icons.shopping_cart_outlined),
-      //       activeIcon: Icon(Icons.shopping_cart),
-      //       label: "Cart",
-      //     ),
-      //     BottomNavigationBarItem(
-      //       icon: Icon(Icons.grid_view_outlined),
-      //       activeIcon: Icon(Icons.grid_view),
-      //       label: "All Products",
-      //     ),
-      //   ],
-      // ),
     );
   }
 }

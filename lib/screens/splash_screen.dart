@@ -23,7 +23,6 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // ✅ Animation setup
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -41,7 +40,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // ✅ Redirect after 3 seconds
     Timer(const Duration(seconds: 3), () {
       _checkOnboarding();
     });
@@ -52,13 +50,11 @@ class _SplashScreenState extends State<SplashScreen>
     bool onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
 
     if (!onboardingCompleted) {
-      // Pehli baar → onboarding
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const OnboardingScreen()),
       );
     } else {
-      // Baad me → direct home
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),

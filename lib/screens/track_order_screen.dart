@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:laptop_harbor/core/constants/app_constants.dart';
 import 'package:laptop_harbor/core/theme/app_theme.dart';
@@ -24,7 +25,6 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   @override
   void initState() {
     super.initState();
-    // If initialOrderId is provided, use it to fetch the order
     if (widget.initialOrderId != null && widget.initialOrderId!.isNotEmpty) {
       _orderIdController.text = widget.initialOrderId!;
       _fetchOrder();
@@ -46,7 +46,6 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
     setState(() => _loading = true);
     try {
-      // Order ko Firestore se fetch karna
       final doc = await FirebaseFirestore.instance
           .collection('orders')
           .doc(orderId)
@@ -61,7 +60,6 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           _orderFound = true;
         });
 
-        // Order items ko fetch karna
         await _fetchOrderItems(orderId);
       } else {
         setState(() {
@@ -185,9 +183,13 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Track Order',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: AppColors.dark),
@@ -200,7 +202,6 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Section with Animation
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -243,7 +244,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
               const SizedBox(height: 24),
 
-              // Order ID Input Section
+              // ======= Order ID Input Section =======
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -357,7 +358,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
               const SizedBox(height: 24),
 
-              // Order Details Section
+              // ========= Order Details Section =========
               if (_orderFound && _orderData != null) ...[
                 // Order Status Card
                 Container(
@@ -428,7 +429,6 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                                     ),
                                     IconButton(
                                       onPressed: () {
-                                        // Copy order ID to clipboard
                                         Clipboard.setData(
                                           ClipboardData(
                                             text: _orderData!['id'] ?? '',
@@ -518,7 +518,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Status Badge
+                      // ======== Status Badge ========
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -564,7 +564,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
                 const SizedBox(height: 20),
 
-                // Order Status Timeline
+                // ========= Order Status Timeline =========
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -669,7 +669,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
                       const SizedBox(height: 20),
 
-                      // Estimated Delivery
+                      // ========== Estimated Delivery ==========
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -807,7 +807,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
                 const SizedBox(height: 20),
 
-                // Order Items
+                // ======= Order Items =======
                 if (_orderItems != null && _orderItems!.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(20),
@@ -931,7 +931,6 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                 const SizedBox(height: 30),
               ],
 
-              // No Order Found Message
               if (!_orderFound &&
                   _orderIdController.text.isNotEmpty &&
                   !_loading)

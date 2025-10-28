@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_constants.dart';
 
 class ProductsScreen extends StatefulWidget {
@@ -31,12 +32,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   // ===================== OPEN ADD/EDIT FORM =====================
   void _openProductForm({DocumentSnapshot? product}) async {
-    // Fetch brands from Firestore
     List<String> brandsList = [];
     final brandsSnapshot = await _firestore.collection('brands').get();
     brandsList = brandsSnapshot.docs.map((e) => e['name'].toString()).toList();
 
-    bool isFeatured = false; // 🔥 FEATURED TOGGLE STATE
+    bool isFeatured = false;
 
     if (product != null) {
       final data = product.data() as Map<String, dynamic>;
@@ -48,7 +48,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       stockController.text = data['stock']?.toString() ?? '0';
       selectedCategory = data['category'];
       selectedBrand = data['brand'];
-      isFeatured = data['featured'] ?? false; // 🔥 Load existing value
+      isFeatured = data['featured'] ?? false;
     } else {
       editingDocId = null;
       nameController.clear();
@@ -58,7 +58,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       stockController.clear();
       selectedCategory = null;
       selectedBrand = null;
-      isFeatured = false; // 🔥 Default false
+      isFeatured = false;
     }
 
     showDialog(
@@ -86,7 +86,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   _buildTextField(nameController, "Product Name"),
                   const SizedBox(height: 12),
 
-                  // Brand Dropdown
                   DropdownButtonFormField<String>(
                     value: selectedBrand,
                     decoration: InputDecoration(
@@ -110,7 +109,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Price & Stock in one row
                   Row(
                     children: [
                       Expanded(
@@ -139,7 +137,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   _buildCategoryDropdown(),
                   const SizedBox(height: 12),
 
-                  // 🔥 FEATURED TOGGLE
                   SwitchListTile(
                     title: const Text("Featured Product"),
                     value: isFeatured,
@@ -178,7 +175,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               'description': descriptionController.text.trim(),
                               'imageUrl': imageUrlController.text.trim(),
                               'category': selectedCategory!,
-                              'featured': isFeatured, // 🔥 Save toggle value
+                              'featured': isFeatured,
                             };
 
                             if (editingDocId != null) {
@@ -286,7 +283,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 244, 247, 250),
       appBar: AppBar(
-        title: const Text("Products Management"),
+        title: Text(
+          "Products Management",
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         backgroundColor: Colors.white,
         actions: [
           IconButton(
@@ -397,7 +401,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
                 final allProducts = snapshot.data!.docs;
 
-                // Local filtering by searchQuery
                 final products = allProducts.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final name = (data['name'] ?? '').toString().toLowerCase();

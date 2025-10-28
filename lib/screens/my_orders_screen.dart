@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 👈 for clipboard
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:laptop_harbor/core/constants/app_constants.dart';
 
 class MyOrdersScreen extends StatefulWidget {
   const MyOrdersScreen({super.key});
@@ -36,9 +38,13 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       backgroundColor: const Color(0xFFEFF2F5),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text(
+        title: Text(
           'My Orders',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -48,7 +54,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           : StreamBuilder<QuerySnapshot>(
               stream: _firestore
                   .collection('orders')
-                  // 👇 No orderBy → no index issue
                   .where('userId', isEqualTo: _user!.uid)
                   .snapshots(),
               builder: (context, snapshot) {
@@ -93,7 +98,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                         }
                       }
 
-                      // Handle products
                       List<Map<String, dynamic>> products = [];
                       if (data['products'] != null) {
                         if (data['products'] is List) {

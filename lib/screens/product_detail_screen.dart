@@ -46,14 +46,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   String _userName = '';
   String _userEmail = '';
 
-  // Create a consistent product ID that will be used throughout the component
   late String _productId;
+
+  int _productStock = 0;
+  bool _isLoadingStock = true;
+  bool _stockNotificationShown = false;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize product ID once - using multiple fallbacks to ensure we have a unique ID
     _productId =
         widget.product['id']?.toString() ??
         widget.product['_id']?.toString() ??
@@ -61,7 +63,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         widget.product['name']?.toString() ??
         'unknown_product';
 
-    // Initialize reviews stream
     _reviewsStreamController = StreamController<QuerySnapshot>.broadcast();
     _reviewsStream = _reviewsStreamController.stream;
     _fetchReviews();
@@ -87,6 +88,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
     _checkLoginStatus();
 
+    _fetchProductStock();
+
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (mounted) {
         setState(() {
@@ -102,12 +105,94 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     });
   }
 
-  // Function to fetch reviews with better error handling and debugging
+  Future<void> _fetchProductStock() async {
+    try {
+      DocumentSnapshot productDoc = await FirebaseFirestore.instance
+          .collection('products')
+          .doc(_productId)
+          .get();
+
+      if (productDoc.exists) {
+        setState(() {
+          _productStock = int.tryParse(productDoc['stock'].toString()) ?? 0;
+          _isLoadingStock = false;
+        });
+
+        _showStockNotification();
+      } else {
+        setState(() {
+          _productStock = 0;
+          _isLoadingStock = false;
+        });
+
+        _showStockNotification();
+      }
+    } catch (e) {
+      print("Error fetching product stock: $e");
+      setState(() {
+        _productStock = 0;
+        _isLoadingStock = false;
+      });
+
+      _showStockNotification();
+    }
+  }
+
+  void _showStockNotification() {
+    if (_stockNotificationShown || _isLoadingStock) return;
+
+    setState(() {
+      _stockNotificationShown = true;
+    });
+
+    String message;
+    Color backgroundColor;
+
+    if (_productStock <= 0) {
+      message = 'This product is currently out of stock';
+      backgroundColor = Colors.red;
+    } else if (_productStock <= 2) {
+      message = 'Only $_productStock left in stock';
+      backgroundColor = Colors.orange;
+    } else {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              _productStock <= 0
+                  ? Icons.error_outline
+                  : Icons.warning_amber_outlined,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
   void _fetchReviews() {
     print('Fetching reviews for product ID: $_productId');
     print('Product name: ${widget.product['name']}');
 
-    // First, let's try to get all reviews to see what's in the collection
     FirebaseFirestore.instance.collection('reviews').get().then((allReviews) {
       print('Total reviews in collection: ${allReviews.docs.length}');
       for (var doc in allReviews.docs) {
@@ -115,7 +200,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       }
     });
 
-    // Now, let's set up the stream for the specific product
     FirebaseFirestore.instance
         .collection('reviews')
         .where('productId', isEqualTo: _productId)
@@ -156,11 +240,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     });
   }
 
-  // Function to pick image from camera and convert to Base64
   Future<void> _pickImageFromCamera() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.camera,
-      imageQuality: 50, // Reduce quality to keep Base64 string smaller
+      imageQuality: 50,
     );
 
     if (pickedFile != null) {
@@ -169,10 +252,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
       setState(() {
         if (kIsWeb) {
-          // For web, store the XFile directly
           _selectedImage = pickedFile;
         } else {
-          // For mobile/desktop, store as File
           _selectedImage = File(pickedFile.path);
         }
         _base64String = base64String;
@@ -180,11 +261,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
   }
 
-  // Function to pick image from gallery and convert to Base64
   Future<void> _pickImageFromGallery() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 50, // Reduce quality to keep Base64 string smaller
+      imageQuality: 50,
     );
 
     if (pickedFile != null) {
@@ -193,10 +273,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
       setState(() {
         if (kIsWeb) {
-          // For web, store the XFile directly
           _selectedImage = pickedFile;
         } else {
-          // For mobile/desktop, store as File
           _selectedImage = File(pickedFile.path);
         }
         _base64String = base64String;
@@ -204,7 +282,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
   }
 
-  // Function to format Firestore Timestamp into a readable string
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
@@ -227,6 +304,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   void _addToCart() {
+    if (_productStock <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This product is currently out of stock'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    if (_quantity > _productStock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Only $_productStock units available in stock'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     final product = widget.product;
     final productId = product['id'] ?? product['name'];
 
@@ -253,12 +352,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        behavior: SnackBarBehavior.floating, // makes it float (modern look)
+        behavior: SnackBarBehavior.floating,
         elevation: 10,
         backgroundColor: AppColors.main,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
 
-        // 👇 Responsive margins
         margin: EdgeInsets.symmetric(
           horizontal: MediaQuery.of(context).size.width < 600
               ? 16
@@ -335,6 +433,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   void _buyNow() {
+    if (_productStock <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This product is currently out of stock'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    if (_quantity > _productStock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Only $_productStock units available in stock'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     final product = widget.product;
     final productId = product['id'] ?? product['name'];
 
@@ -380,10 +500,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
   }
 
-  // Function to submit review to Firestore with better debugging
   void _submitReview() async {
     if (_reviewController.text.isNotEmpty && _userRating > 0) {
-      // Show a loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -391,7 +509,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       );
 
       Map<String, dynamic> newReview = {
-        'productId': _productId, // Use the consistent product ID
+        'productId': _productId,
         'productName': widget.product['name'] ?? 'Unknown Product',
         'userId': FirebaseAuth.instance.currentUser?.uid,
         'userName': _userName.isNotEmpty ? _userName : _userEmail.split('@')[0],
@@ -418,8 +536,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _base64String = null;
         });
 
-        Navigator.of(context).pop(); // Close loading dialog
-        Navigator.of(context).pop(); // Close review dialog
+        Navigator.of(context).pop();
+        Navigator.of(context).pop();
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -428,10 +546,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           ),
         );
 
-        // Refresh reviews after adding a new one
         _fetchReviews();
       } catch (e) {
-        Navigator.of(context).pop(); // Close loading dialog
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to submit review: $e'),
@@ -449,9 +566,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
   }
 
-  // Dialog to add review with image picker
   void _showAddReviewDialog() {
-    // Check if user is logged in before showing the dialog
     if (!_isLoggedIn) {
       showDialog(
         context: context,
@@ -522,14 +637,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         setState(() {
                           _userRating = index + 1.0;
                         });
-                        setDialogState(() {}); // Update dialog UI
+                        setDialogState(() {});
                       },
                     );
                   }),
                 ),
                 const SizedBox(height: 16),
 
-                // Image Picker and Preview Section
                 if (_selectedImage != null)
                   Column(
                     children: [
@@ -563,7 +677,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             _selectedImage = null;
                             _base64String = null;
                           });
-                          setDialogState(() {}); // Update dialog UI
+                          setDialogState(() {});
                         },
                         child: const Text(
                           'Remove Image',
@@ -579,9 +693,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       TextButton.icon(
                         onPressed: () async {
                           await _pickImageFromCamera();
-                          setDialogState(
-                            () {},
-                          ); // Refresh dialog after picking image
+                          setDialogState(() {});
                         },
                         icon: const Icon(Icons.camera_alt),
                         label: const Text('Camera'),
@@ -589,9 +701,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       TextButton.icon(
                         onPressed: () async {
                           await _pickImageFromGallery();
-                          setDialogState(
-                            () {},
-                          ); // Refresh dialog after picking image
+                          setDialogState(() {});
                         },
                         icon: const Icon(Icons.photo_library),
                         label: const Text('Gallery'),
@@ -604,14 +714,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   controller: _reviewController,
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: Colors.white, // ✅ White background
+                    fillColor: Colors.white,
                     labelText: 'Your Review',
                     hintText: 'Share your experience...',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  style: const TextStyle(color: Colors.black), // ✅ Dark text
+                  style: const TextStyle(color: Colors.black),
                   maxLines: 3,
                 ),
               ],
@@ -711,6 +821,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         : isSmallScreen
         ? 80.0
         : 90.0;
+
+    // NEW: Check if buttons should be disabled
+    final isOutOfStock = _productStock <= 0;
+    final isQuantityExceedsStock = _quantity > _productStock;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -844,6 +958,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       ),
                     ),
                     SizedBox(height: isDesktop ? 30.0 : 20.0),
+                    // =========== Product Details Section ===========
                     Container(
                       margin: EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
@@ -891,7 +1006,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   ],
                                 ),
                               ),
-                              // This rating will now be updated from Firestore
                               StreamBuilder<QuerySnapshot>(
                                 stream: _reviewsStream,
                                 builder: (context, snapshot) {
@@ -951,6 +1065,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       ),
                     ),
                     SizedBox(height: isDesktop ? 25.0 : 20.0),
+                    // ========= Quantity Section =========
                     Container(
                       margin: EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
@@ -1023,9 +1138,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                     size: isDesktop ? 24 : 20,
                                   ),
                                   onPressed: () {
-                                    setState(() {
-                                      _quantity++;
-                                    });
+                                    // NEW: Don't allow increasing quantity beyond stock
+                                    if (_quantity < _productStock) {
+                                      setState(() {
+                                        _quantity++;
+                                      });
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Maximum available quantity: $_productStock',
+                                          ),
+                                          backgroundColor: Colors.orange,
+                                          duration: const Duration(seconds: 3),
+                                        ),
+                                      );
+                                    }
                                   },
                                 ),
                               ],
@@ -1035,9 +1165,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       ),
                     ),
 
+                    // ========= Quantity Section End =========
                     SizedBox(height: isDesktop ? 25.0 : 20.0),
 
-                    // Reviews Section now uses StreamBuilder
+                    // ========= Reviews Section =========
                     Container(
                       margin: EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
@@ -1073,7 +1204,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   color: AppColors.dark,
                                 ),
                               ),
-                              // Modified Add Review button - only enabled if user is logged in
                               _isLoggedIn
                                   ? TextButton(
                                       onPressed: _showAddReviewDialog,
@@ -1088,7 +1218,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                     )
                                   : TextButton.icon(
                                       onPressed: () {
-                                        // Show login prompt when not logged in
                                         showDialog(
                                           context: context,
                                           builder: (context) => AlertDialog(
@@ -1143,7 +1272,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           StreamBuilder<QuerySnapshot>(
                             stream: _reviewsStream,
                             builder: (context, snapshot) {
-                              // Debug output
                               print(
                                 'StreamBuilder state: ${snapshot.connectionState}',
                               );
@@ -1186,7 +1314,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   : totalRating / reviews.length;
                               final totalReviews = reviews.length;
 
-                              // Rating Summary UI
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -1242,13 +1369,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   ),
                                   SizedBox(height: isDesktop ? 25.0 : 20.0),
 
-                                  // Reviews List - Show all reviews without limiting to 3
                                   ListView.separated(
                                     shrinkWrap: true,
                                     physics:
                                         const NeverScrollableScrollPhysics(),
-                                    itemCount:
-                                        reviews.length, // Show all reviews
+                                    itemCount: reviews.length,
                                     separatorBuilder: (context, index) =>
                                         const Divider(),
                                     itemBuilder: (context, index) {
@@ -1324,7 +1449,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                               height: isDesktop ? 12.0 : 8.0,
                                             ),
 
-                                            // Display image if available
                                             if (reviewData['imageBase64'] !=
                                                 null)
                                               Container(
@@ -1373,14 +1497,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           ),
                         ],
                       ),
-                    ),
+                    ), // ========= Reviews Section End =========
                     SizedBox(height: isDesktop ? 30.0 : 20.0),
                   ],
                 ),
               ),
             ),
           ),
-          // Fixed buttons at bottom
           Positioned(
             bottom: 0,
             left: 0,
@@ -1429,48 +1552,58 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   ),
                   child: Row(
                     children: [
-                      // 🛒 Add to Cart Button
+                      // ======== Add to Cart Button ========
                       Expanded(
                         child: SizedBox(
                           height: buttonHeight,
                           child: OutlinedButton.icon(
-                            onPressed: _addToCart,
+                            onPressed: isOutOfStock ? null : _addToCart,
                             icon: Icon(
                               Icons.shopping_cart_outlined,
-                              color: AppColors.main,
+                              color: isOutOfStock
+                                  ? Colors.grey
+                                  : AppColors.main,
                               size: fontSize + 4,
                             ),
                             label: Text(
                               "Add to Cart",
                               style: TextStyle(
-                                color: AppColors.main,
+                                color: isOutOfStock
+                                    ? Colors.grey
+                                    : AppColors.main,
                                 fontSize: fontSize,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                color: AppColors.main,
+                                color: isOutOfStock
+                                    ? Colors.grey
+                                    : AppColors.main,
                                 width: 1.5,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               backgroundColor: Colors.white,
-                              foregroundColor: AppColors.main,
-                              overlayColor: AppColors.main.withOpacity(0.1),
+                              foregroundColor: isOutOfStock
+                                  ? Colors.grey
+                                  : AppColors.main,
+                              overlayColor: isOutOfStock
+                                  ? null
+                                  : AppColors.main.withOpacity(0.1),
                             ),
                           ),
                         ),
                       ),
                       SizedBox(width: spacing),
 
-                      // 💳 Buy Now Button
+                      // ======== Buy Now Button ========
                       Expanded(
                         child: SizedBox(
                           height: buttonHeight,
                           child: ElevatedButton(
-                            onPressed: _buyNow,
+                            onPressed: isOutOfStock ? null : _buyNow,
                             style:
                                 ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
@@ -1479,20 +1612,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
                                   ),
-                                  backgroundColor: AppColors.main,
-                                  shadowColor: AppColors.main.withOpacity(0.3),
-                                  elevation: 5,
+                                  backgroundColor: isOutOfStock
+                                      ? Colors.grey
+                                      : AppColors.main,
+                                  shadowColor: isOutOfStock
+                                      ? null
+                                      : AppColors.main.withOpacity(0.3),
+                                  elevation: isOutOfStock ? 0 : 5,
                                 ).copyWith(
                                   backgroundColor:
                                       WidgetStateProperty.resolveWith((states) {
                                         if (states.contains(
                                           WidgetState.pressed,
                                         )) {
-                                          return AppColors.main.withOpacity(
-                                            0.8,
-                                          );
+                                          return isOutOfStock
+                                              ? Colors.grey
+                                              : AppColors.main.withOpacity(0.8);
                                         }
-                                        return AppColors.main;
+                                        return isOutOfStock
+                                            ? Colors.grey
+                                            : AppColors.main;
                                       }),
                                 ),
                             child: Row(
@@ -1528,7 +1667,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  // Helper widget to avoid repetition
   Widget _buildRatingWidget(double rating, int count) {
     final isDesktop = MediaQuery.of(context).size.width >= 1000;
     final isTablet =

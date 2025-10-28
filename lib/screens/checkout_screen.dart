@@ -6,8 +6,6 @@ import 'package:laptop_harbor/core/theme/app_theme.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 import 'package:laptop_harbor/screens/track_order_screen.dart';
 
@@ -66,7 +64,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _userName = userData['name'] ?? '';
         });
       } else {
-        // If user document doesn't exist, try to get name from Firebase Auth
         if (_currentUser?.displayName != null) {
           setState(() {
             _nameController.text = _currentUser!.displayName!;
@@ -76,7 +73,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     } catch (e) {
       print("Error fetching user data: $e");
-      // Show error message to user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -100,89 +96,42 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  // =============== EMAIL SENDING FUNCTION ===============
-  // 👇 SIMPLE EMAIL SENDING FUNCTION USING EMAILJS
-  Future<void> _sendOrderConfirmationEmail(
-    String orderId,
-    double totalAmount,
-  ) async {
-    // EmailJS configuration - Replace with your actual credentials
-    const String serviceId = 'service_your_service_id';
-    const String templateId = 'template_your_template_id';
-    const String userId = 'user_your_public_key';
-    const String accessToken =
-        'your_private_key'; // Add this for better security
+  // =============== UPDATE STOCK FUNCTION ===============
+  Future<void> _updateProductStock() async {
+    final cartItems = Cart.instance.items;
 
-    // Prepare email parameters
-    final Map<String, dynamic> templateParams = {
-      'to_name': _nameController.text.isNotEmpty
-          ? _nameController.text
-          : (_userName ?? 'Customer'),
-      'to_email': _currentUser!.email,
-      'order_id': orderId,
-      'order_total': totalAmount.toStringAsFixed(2),
-      'shipping_address':
-          '${_addressController.text}, ${_cityController.text}, ${_postalCodeController.text}',
-      'phone': _phoneController.text,
-      'payment_method': _paymentMethod,
-      'items': Cart.instance.items.values
-          .map(
-            (item) => {
-              'name': item['name'],
-              'quantity': item['quantity'],
-              'price': item['price'],
-            },
-          )
-          .toList(),
-    };
+    for (var productId in cartItems.keys) {
+      final item = cartItems[productId]!;
 
-    try {
-      final response = await http.post(
-        Uri.parse('https://api.emailjs.com/api/v1.0/email/send'),
-        headers: {
-          'Content-Type': 'application/json',
-          'origin':
-              'https://your-app-domain.com', // Replace with your app domain
-        },
-        body: json.encode({
-          'service_id': serviceId,
-          'template_id': templateId,
-          'user_id': userId,
-          'accessToken': accessToken,
-          'template_params': templateParams,
-        }),
-      );
+      try {
+        // Get the product document
+        DocumentSnapshot productDoc = await FirebaseFirestore.instance
+            .collection('products')
+            .doc(productId)
+            .get();
 
-      if (response.statusCode == 200) {
-        print('Email sent successfully');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Confirmation email sent successfully"),
-              backgroundColor: Colors.green,
-            ),
+        if (productDoc.exists) {
+          // Get current stock and ensure it's an integer
+          int currentStock = int.tryParse(productDoc['stock'].toString()) ?? 0;
+
+          // Get ordered quantity and ensure it's an integer
+          int orderedQuantity = int.tryParse(item['quantity'].toString()) ?? 0;
+
+          // Calculate new stock
+          int newStock = currentStock - orderedQuantity;
+
+          // Update the stock in Firestore
+          await FirebaseFirestore.instance
+              .collection('products')
+              .doc(productId)
+              .update({'stock': newStock});
+
+          print(
+            "Updated stock for ${item['name']}: $currentStock -> $newStock",
           );
         }
-      } else {
-        print('Failed to send email: ${response.body}');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Failed to send confirmation email"),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print('Error sending email: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error sending email: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
+      } catch (e) {
+        print("Error updating stock for $productId: $e");
       }
     }
   }
@@ -209,65 +158,59 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      // Create order in Firestore
       if (_currentUser != null) {
-        // Get cart items
         final cartItems = Cart.instance.items;
         final subtotal = Cart.instance.getTotalPrice();
         final deliveryFee = 100.0;
         final total = subtotal + deliveryFee;
 
-        // Create order document with all required information
-        DocumentReference
-        orderRef = await FirebaseFirestore.instance.collection('orders').add({
-          'userId': _currentUser!.uid,
-          'userName': _nameController.text.isNotEmpty
-              ? _nameController.text
-              : (_userName ?? 'Guest'),
-          'userEmail': _currentUser!.email,
-          'userAddress': _addressController.text,
-          'userCity': _cityController.text,
-          'userPhone': _phoneController.text,
-          'products': cartItems.values
-              .map(
-                (item) => {
-                  'id': item['id'],
-                  'name': item['name'],
-                  'price': item['price'],
-                  'quantity': item['quantity'],
-                  'imageUrl': item['imageUrl'],
-                  'brand': item['brand'] ?? '',
-                },
-              )
-              .toList(),
-          'totalAmount': total,
-          'shippingAddress': {
-            'name': _nameController.text,
-            'address': _addressController.text,
-            'city': _cityController.text,
-            'postalCode': _postalCodeController.text,
-            'phone': _phoneController.text,
-          },
-          'paymentMethod': _paymentMethod,
-          'status': 'Pending',
-          // FIXED: Use 'createdAt' with FieldValue.serverTimestamp() instead of 'orderDate'
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        DocumentReference orderRef = await FirebaseFirestore.instance
+            .collection('orders')
+            .add({
+              'userId': _currentUser!.uid,
+              'userName': _nameController.text.isNotEmpty
+                  ? _nameController.text
+                  : (_userName ?? 'Guest'),
+              'userEmail': _currentUser!.email,
+              'userAddress': _addressController.text,
+              'userCity': _cityController.text,
+              'userPhone': _phoneController.text,
+              'products': cartItems.values
+                  .map(
+                    (item) => {
+                      'id': item['id'],
+                      'name': item['name'],
+                      'price': item['price'],
+                      'quantity': item['quantity'],
+                      'imageUrl': item['imageUrl'],
+                      'brand': item['brand'] ?? '',
+                    },
+                  )
+                  .toList(),
+              'totalAmount': total,
+              'shippingAddress': {
+                'name': _nameController.text,
+                'address': _addressController.text,
+                'city': _cityController.text,
+                'postalCode': _postalCodeController.text,
+                'phone': _phoneController.text,
+              },
+              'paymentMethod': _paymentMethod,
+              'status': 'Pending',
+              'createdAt': FieldValue.serverTimestamp(),
+            });
 
-        // Store the order ID
         final orderId = orderRef.id;
         setState(() {
           _orderId = orderId;
         });
 
-        // Check if user document exists, if not create it
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(_currentUser!.uid)
             .get();
 
         if (userDoc.exists) {
-          // Update existing user's shipping info
           await FirebaseFirestore.instance
               .collection('users')
               .doc(_currentUser!.uid)
@@ -279,7 +222,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 'phone': _phoneController.text,
               });
         } else {
-          // Create new user document with shipping info
           await FirebaseFirestore.instance
               .collection('users')
               .doc(_currentUser!.uid)
@@ -294,7 +236,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               });
         }
 
-        // Save each product in the order to a separate collection for analytics
         for (var productId in cartItems.keys) {
           final item = cartItems[productId]!;
           await FirebaseFirestore.instance.collection('order_items').add({
@@ -310,10 +251,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           });
         }
 
-        // 👇 SEND EMAIL NOTIFICATION
-        await _sendOrderConfirmationEmail(orderId, total);
+        // UPDATE PRODUCT STOCK - NEW CODE
+        await _updateProductStock();
 
-        // Clear cart
         Cart.instance.clear();
 
         setState(() {
@@ -321,10 +261,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _orderPlaced = true;
         });
 
-        // Show success message
         showDialog(
           context: context,
-          barrierDismissible: false, // User must tap button to close
+          barrierDismissible: false,
           builder: (context) => AlertDialog(
             title: const Text("Order Placed!"),
             content: Column(
@@ -337,7 +276,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   style: TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                // Order ID with copy button
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -364,16 +302,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  "A confirmation email has been sent to your registered email address.",
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
                 const SizedBox(height: 16),
-                // Track My Order Button
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).pop(); // Close dialog
+                    Navigator.of(context).pop();
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -393,10 +325,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop(); // Close dialog
-                  Navigator.of(
-                    context,
-                  ).popUntil((route) => route.isFirst); // Go to home
+                  Navigator.of(context).pop();
+                  Navigator.of(context).popUntil((route) => route.isFirst);
                 },
                 child: const Text("Continue Shopping"),
               ),
@@ -435,7 +365,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _isLoading = false;
       });
 
-      // Show error message
+      // - Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Error placing order: $e"),
@@ -572,19 +502,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Order Summary
+                  // ======== Order Summary ========
                   Container(
                     margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
+                          color: Colors.black.withOpacity(0.05),
+                          spreadRadius: 2,
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -594,11 +524,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         const Text(
                           "Order Summary",
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 15),
+                        const SizedBox(height: 20),
                         ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -608,32 +540,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             final item = cartItems[productId]!;
 
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.only(bottom: 14),
                               child: Row(
                                 children: [
                                   ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(10),
                                     child: Image.network(
                                       item['imageUrl'],
-                                      width: 60,
-                                      height: 60,
+                                      width: 65,
+                                      height: 65,
                                       fit: BoxFit.cover,
                                       errorBuilder:
                                           (context, error, stackTrace) {
                                             return Container(
-                                              width: 60,
-                                              height: 60,
+                                              width: 65,
+                                              height: 65,
                                               color: Colors.grey[300],
                                               child: const Icon(
                                                 Icons.broken_image,
-                                                size: 30,
+                                                size: 28,
                                                 color: Colors.grey,
                                               ),
                                             );
                                           },
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -642,12 +574,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                         Text(
                                           item['name'],
                                           style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                            color: Colors.black87,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        const SizedBox(height: 4),
+                                        const SizedBox(height: 5),
                                         Text(
                                           "Qty: ${item['quantity']} × Rs. ${item['price']}",
                                           style: TextStyle(
@@ -661,7 +595,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   Text(
                                     "Rs. ${(item['price'] * item['quantity']).toStringAsFixed(2)}",
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                      color: Colors.black87,
                                     ),
                                   ),
                                 ],
@@ -669,7 +605,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             );
                           },
                         ),
-                        const Divider(height: 20),
+                        const Divider(
+                          height: 25,
+                          thickness: 1,
+                          color: Color(0xFFECECEC),
+                        ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -678,18 +618,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                             Text(
                               "Rs. ${subtotal.toStringAsFixed(2)}",
                               style: const TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         const Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -698,18 +640,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                             Text(
                               "Rs. 100",
                               style: TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
+                        const Divider(
+                          height: 25,
+                          thickness: 1,
+                          color: Color(0xFFECECEC),
+                        ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -717,14 +666,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               "Total",
                               style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
                               ),
                             ),
                             Text(
                               "Rs. ${total.toStringAsFixed(2)}",
                               style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w800,
                                 color: AppColors.main,
                               ),
                             ),
@@ -733,20 +683,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ],
                     ),
                   ),
+                  // ======== Order Summary End ========
 
-                  // Shipping Information - COMPACT UI WITH NAME FIELD
+                  // ========= Shipping Information - PREMIUM UI =========
                   Container(
                     margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+                          color: Colors.black.withOpacity(0.05),
+                          spreadRadius: 2,
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -755,34 +706,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header with icon
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(6),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: AppColors.main.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
-                                  Icons.person,
+                                  Icons.person_outline,
                                   color: AppColors.main,
-                                  size: 20,
+                                  size: 22,
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 12),
                               const Text(
                                 "Customer Information",
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black87,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
 
-                          // Name field with compact styling
                           TextFormField(
                             controller: _nameController,
                             decoration: InputDecoration(
@@ -791,56 +741,56 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               filled: true,
                               fillColor: Colors.grey[50],
                               contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                                horizontal: 18,
+                                vertical: 14,
                               ),
                               prefixIcon: Icon(
                                 Icons.person,
                                 color: AppColors.main,
-                                size: 20,
+                                size: 22,
                               ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                                 borderSide: BorderSide.none,
                               ),
                             ),
                             validator: (value) {
-                              if (value == null || value.isEmpty) {
+                              if (value == null || value.isEmpty)
                                 return 'Please enter your name';
-                              }
                               return null;
                             },
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
 
                           // Shipping Address Header
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(6),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: AppColors.main.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
-                                  Icons.location_on,
+                                  Icons.location_on_outlined,
                                   color: AppColors.main,
-                                  size: 20,
+                                  size: 22,
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 12),
                               const Text(
                                 "Shipping Address",
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black87,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
 
-                          // Address field with compact styling
+                          // Address
                           TextFormField(
                             controller: _addressController,
                             decoration: InputDecoration(
@@ -849,29 +799,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               filled: true,
                               fillColor: Colors.grey[50],
                               contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                                horizontal: 18,
+                                vertical: 14,
                               ),
                               prefixIcon: Icon(
-                                Icons.home,
+                                Icons.home_outlined,
                                 color: AppColors.main,
-                                size: 20,
+                                size: 22,
                               ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                                 borderSide: BorderSide.none,
                               ),
                             ),
                             validator: (value) {
-                              if (value == null || value.isEmpty) {
+                              if (value == null || value.isEmpty)
                                 return 'Please enter your address';
-                              }
                               return null;
                             },
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
 
-                          // City and Postal Code in a row with compact styling
+                          // City & Postal Code
                           Row(
                             children: [
                               Expanded(
@@ -885,23 +834,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     filled: true,
                                     fillColor: Colors.grey[50],
                                     contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
+                                      horizontal: 18,
+                                      vertical: 14,
                                     ),
                                     prefixIcon: Icon(
-                                      Icons.location_city,
+                                      Icons.location_city_outlined,
                                       color: AppColors.main,
-                                      size: 20,
+                                      size: 22,
                                     ),
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(10),
                                       borderSide: BorderSide.none,
                                     ),
                                   ),
                                   validator: (value) {
-                                    if (value == null || value.isEmpty) {
+                                    if (value == null || value.isEmpty)
                                       return 'Please enter your city';
-                                    }
                                     return null;
                                   },
                                 ),
@@ -918,33 +866,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     filled: true,
                                     fillColor: Colors.grey[50],
                                     contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
+                                      horizontal: 18,
+                                      vertical: 14,
                                     ),
                                     prefixIcon: Icon(
-                                      Icons.mail,
+                                      Icons.local_post_office_outlined,
                                       color: AppColors.main,
-                                      size: 20,
+                                      size: 22,
                                     ),
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(10),
                                       borderSide: BorderSide.none,
                                     ),
                                   ),
                                   keyboardType: TextInputType.number,
                                   validator: (value) {
-                                    if (value == null || value.isEmpty) {
+                                    if (value == null || value.isEmpty)
                                       return 'Please enter postal code';
-                                    }
                                     return null;
                                   },
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
 
-                          // Phone field with compact styling
                           TextFormField(
                             controller: _phoneController,
                             decoration: InputDecoration(
@@ -953,27 +899,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               filled: true,
                               fillColor: Colors.grey[50],
                               contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                                horizontal: 18,
+                                vertical: 14,
                               ),
                               prefixIcon: Icon(
-                                Icons.phone,
+                                Icons.phone_outlined,
                                 color: AppColors.main,
-                                size: 20,
+                                size: 22,
                               ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                                 borderSide: BorderSide.none,
                               ),
                             ),
                             keyboardType: TextInputType.phone,
                             validator: (value) {
-                              if (value == null || value.isEmpty) {
+                              if (value == null || value.isEmpty)
                                 return 'Please enter your phone number';
-                              }
-                              if (value.length < 10) {
+                              if (value.length < 10)
                                 return 'Please enter a valid phone number';
-                              }
                               return null;
                             },
                           ),
@@ -981,8 +925,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                     ),
                   ),
+                  // ========= Shipping Information - PREMIUM UI End =========
 
-                  // Payment Method - ONLY COD
+                  // ======== Payment Method - ONLY COD ========
                   Container(
                     margin: const EdgeInsets.all(16),
                     padding: const EdgeInsets.all(20),
@@ -1001,7 +946,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header with icon
                         Row(
                           children: [
                             Container(

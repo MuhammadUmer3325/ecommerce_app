@@ -71,7 +71,6 @@ class _UsersScreenState extends State<UsersScreen> {
             onPressed: () async {
               if (_formKey.currentState!.validate()) {
                 if (editingDocId != null) {
-                  // Update existing user
                   await _firestore
                       .collection('users')
                       .doc(editingDocId)
@@ -81,7 +80,6 @@ class _UsersScreenState extends State<UsersScreen> {
                         'phone': phoneController.text,
                       });
                 } else {
-                  // Add new user
                   await _firestore.collection('users').add({
                     'name': nameController.text,
                     'email': emailController.text,

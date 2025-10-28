@@ -9,10 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
-  // ✅ Save onboarding flag
+  // Save onboarding flag
   Future<void> _completeOnboarding(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_completed', true); // flag save
+    await prefs.setBool('onboarding_completed', true); 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const HomeScreen()),

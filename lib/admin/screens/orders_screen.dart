@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_constants.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -19,13 +20,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
     _refreshOrders();
   }
 
-  // Function to refresh orders
   Future<void> _refreshOrders() async {
     setState(() {
       _isLoading = true;
     });
 
-    // Just set loading to false after a small delay to show the refresh indicator
     await Future.delayed(const Duration(seconds: 1));
 
     if (mounted) {
@@ -35,7 +34,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  // ✅ Update order status
   Future<void> _updateStatus(String id, String status) async {
     try {
       await _firestore.collection('orders').doc(id).update({'status': status});
@@ -55,7 +53,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  // ✅ Delete order
   Future<void> _deleteOrder(String id) async {
     try {
       await _firestore.collection('orders').doc(id).delete();
@@ -75,7 +72,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  // Get status color based on status value
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Pending':
@@ -103,9 +99,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
       backgroundColor: const Color.fromARGB(255, 236, 241, 243),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text(
+        title: Text(
           'Orders Management',
-          style: TextStyle(color: Colors.black),
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
@@ -117,9 +117,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         ],
       ),
 
-      // ✅ Real-time orders with StreamBuilder
       body: StreamBuilder<QuerySnapshot>(
-        // FIXED: Order by createdAt descending to show newest orders first
         stream: _firestore
             .collection('orders')
             .orderBy('createdAt', descending: true)
@@ -159,7 +157,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
           final orders = snapshot.data!.docs;
 
           return RefreshIndicator(
-            // FIXED: Implement proper refresh functionality
             onRefresh: () async {
               await _refreshOrders();
             },
@@ -170,7 +167,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 final order = orders[index];
                 final data = order.data() as Map<String, dynamic>? ?? {};
 
-                // ✅ Safe fallback data - matching CheckoutScreen structure
                 final userName =
                     data['userName'] ??
                     data['customerName'] ??
@@ -185,7 +181,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     data['customer']?['email'] ??
                     'Unknown';
 
-                // FIXED: Try to get address from different possible fields
                 String userAddress = 'Unknown';
                 if (data['userAddress'] != null) {
                   userAddress = data['userAddress'];
@@ -198,7 +193,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   userAddress = data['customerAddress'];
                 }
 
-                // FIXED: Try to get city from different possible fields
                 String userCity = '';
                 if (data['userCity'] != null) {
                   userCity = data['userCity'];
@@ -207,7 +201,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   userCity = data['shippingAddress']['city'];
                 }
 
-                // Combine address and city
                 if (userCity.isNotEmpty) {
                   userAddress = '$userAddress, $userCity';
                 }
@@ -221,7 +214,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
                 final status = data['status'] ?? 'Pending';
 
-                // ✅ Handle createdAt safely
                 DateTime createdAt = DateTime.now();
                 if (data['createdAt'] != null) {
                   if (data['createdAt'] is Timestamp) {
@@ -232,7 +224,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   }
                 }
 
-                // ✅ Handle products safely - matching CheckoutScreen structure
                 List<Map<String, dynamic>> products = [];
                 if (data['products'] != null) {
                   if (data['products'] is List) {
@@ -413,7 +404,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  // ✅ Empty state UI
   Widget _buildEmptyState() {
     return Center(
       child: Column(

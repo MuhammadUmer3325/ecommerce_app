@@ -1,13 +1,12 @@
-// DashboardScreen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:laptop_harbor/admin/screens/brands_screen.dart';
-import 'package:rxdart/rxdart.dart'; // 👈 for combineLatest
+import 'package:rxdart/rxdart.dart';
 import 'package:laptop_harbor/admin/screens/orders_screen.dart';
 import 'package:laptop_harbor/admin/screens/products_screen.dart';
-import 'package:laptop_harbor/admin/screens/users_screen.dart';
-import 'package:laptop_harbor/admin/screens/reviews_screen.dart'; // Added import
+import 'package:laptop_harbor/admin/screens/reviews_screen.dart';
 import 'package:laptop_harbor/screens/home_screen.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -19,7 +18,7 @@ class DashboardScreen extends StatelessWidget {
     final adminUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      appBar: _buildAppBar(context), // 🧠 context added here
+      appBar: _buildAppBar(context),
       drawer: buildAdminDrawer(context, adminUser),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -40,15 +39,15 @@ class DashboardScreen extends StatelessWidget {
   // ======================= AppBar =======================
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      title: const Text(
+      title: Text(
         'Admin Dashboard',
-        style: TextStyle(
-          fontFamily: AppFonts.primaryFont,
-          fontWeight: FontWeight.w600,
+        style: GoogleFonts.orbitron(
+          color: AppColors.dark,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
         ),
       ),
       actions: [
-        // 🌀 Switch to App button
         IconButton(
           tooltip: 'Switch to App',
           icon: const Icon(Icons.switch_account),
@@ -85,16 +84,22 @@ class DashboardScreen extends StatelessWidget {
 
   // ======================= Stats Cards =======================
   Widget _buildStatsCards(BuildContext context) {
-    return StreamBuilder<List<int>>(
+    return StreamBuilder<List<dynamic>>(
       stream: _fetchStatsStream(),
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          print('Error in stats stream: ${snapshot.error}');
+          return const Center(child: Text('Error loading stats'));
+        }
+
         final productsCount = snapshot.hasData ? snapshot.data![0] : 0;
         final ordersCount = snapshot.hasData ? snapshot.data![1] : 0;
-        final reviewsCount = snapshot.hasData
-            ? snapshot.data![2]
-            : 0; // Added reviews count
-        final usersCount = 0; // Users collection not added yet
-        final revenue = 0; // Revenue not implemented yet
+        final reviewsCount = snapshot.hasData ? snapshot.data![2] : 0;
+        final revenue = snapshot.hasData ? snapshot.data![3] : 0.0;
 
         final stats = [
           {
@@ -131,14 +136,6 @@ class DashboardScreen extends StatelessWidget {
             },
           },
           {
-            'title': 'Users',
-            'count': usersCount,
-            'icon': Icons.people,
-            'onTap': () {
-              // Future: Add UsersScreen here
-            },
-          },
-          {
             'title': 'Revenue',
             'count': revenue,
             'icon': Icons.attach_money,
@@ -166,8 +163,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  /// ✅ Realtime combined stream for products, orders & reviews count using RxDart
-  Stream<List<int>> _fetchStatsStream() {
+  Stream<List<dynamic>> _fetchStatsStream() {
     final productsStream = FirebaseFirestore.instance
         .collection('products')
         .snapshots()
@@ -183,14 +179,51 @@ class DashboardScreen extends StatelessWidget {
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
 
-    return Rx.combineLatest3<int, int, int, List<int>>(
+    final revenueStream = FirebaseFirestore.instance
+        .collection('orders')
+        .snapshots()
+        .map((snapshot) {
+          double totalRevenue = 0.0;
+
+          for (var doc in snapshot.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            print(
+              'Order ID: ${doc.id}, Status: ${data['status']}, Amount: ${data['totalAmount']}',
+            );
+
+            final status = data['status']?.toString().toLowerCase();
+            if (status == 'delivered' ||
+                status == 'completed' ||
+                status == 'complete') {
+              final amount =
+                  data['totalAmount'] ?? data['amount'] ?? data['price'] ?? 0;
+
+              if (amount is num) {
+                totalRevenue += amount.toDouble();
+              } else if (amount is String) {
+                try {
+                  totalRevenue += double.parse(amount);
+                } catch (e) {
+                  print('Error parsing amount: $amount');
+                }
+              }
+            }
+          }
+
+          print('Total Revenue: $totalRevenue');
+          return totalRevenue;
+        });
+
+    return Rx.combineLatest4<int, int, int, double, List<dynamic>>(
       productsStream,
       ordersStream,
       reviewsStream,
-      (productsCount, ordersCount, reviewsCount) => [
+      revenueStream,
+      (productsCount, ordersCount, reviewsCount, revenue) => [
         productsCount,
         ordersCount,
         reviewsCount,
+        revenue,
       ],
     );
   }
@@ -201,6 +234,17 @@ class DashboardScreen extends StatelessWidget {
     IconData icon,
     BuildContext context,
   ) {
+    String displayValue = value;
+    if (title == 'Revenue') {
+      try {
+        final revenue = double.parse(value);
+        displayValue =
+            '${revenue.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+      } catch (e) {
+        displayValue = '0';
+      }
+    }
+
     return Container(
       width: MediaQuery.of(context).size.width / 2 - 24,
       padding: const EdgeInsets.all(16),
@@ -235,7 +279,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  value,
+                  displayValue,
                   style: const TextStyle(
                     color: AppColors.light,
                     fontSize: 18,
@@ -307,10 +351,7 @@ class DashboardScreen extends StatelessWidget {
                       cells: [
                         DataCell(
                           Text(
-                            order.id.substring(
-                              0,
-                              8,
-                            ), // Show first 8 chars of ID
+                            order.id.substring(0, 8),
                             style: const TextStyle(color: AppColors.light),
                           ),
                         ),

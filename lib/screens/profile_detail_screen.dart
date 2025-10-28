@@ -6,7 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:laptop_harbor/core/constants/app_constants.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -30,11 +32,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        DocumentSnapshot userDoc =
-            await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
         if (userDoc.exists) {
-          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> userData =
+              userDoc.data() as Map<String, dynamic>;
           setState(() {
             _nameController.text = userData['name'] ?? '';
             _emailController.text = userData['email'] ?? '';
@@ -53,8 +58,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImageFromGallery() async {
-    final XFile? pickedFile =
-        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
     if (pickedFile != null) {
       Uint8List imageBytes = await pickedFile.readAsBytes();
       String base64String = base64Encode(imageBytes);
@@ -70,8 +77,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImageFromCamera() async {
-    final XFile? pickedFile =
-        await _picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
     if (pickedFile != null) {
       Uint8List imageBytes = await pickedFile.readAsBytes();
       String base64String = base64Encode(imageBytes);
@@ -95,7 +104,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       Map<String, dynamic> updatedData = {
         'name': _nameController.text,
-        'email': _emailController.text,
         'phone': _phoneController.text,
       };
 
@@ -104,7 +112,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       try {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).update(updatedData);
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update(updatedData);
         setState(() {
           _isEditing = false;
           _isLoading = false;
@@ -145,11 +156,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        title: const Text(
-          'My Profile',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
+        title: Text(
+          "My Profile",
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
+            fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
@@ -185,9 +196,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  // Profile Picture
+                  // ======= Profile Picture =======
                   GestureDetector(
-                    onTap: _isEditing ? () => _showImagePickerBottomSheet() : null,
+                    onTap: _isEditing
+                        ? () => _showImagePickerBottomSheet()
+                        : null,
                     child: Stack(
                       children: [
                         Hero(
@@ -196,9 +209,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             radius: 65,
                             backgroundColor: Colors.grey[300],
                             backgroundImage: _getProfileImage(),
-                            child: (_profileImageBase64 == null ||
+                            child:
+                                (_profileImageBase64 == null ||
                                     _profileImageBase64!.isEmpty)
-                                ? const Icon(Icons.person, size: 65, color: Colors.grey)
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 65,
+                                    color: Colors.grey,
+                                  )
                                 : null,
                           ),
                         ),
@@ -219,8 +237,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               child: const Padding(
                                 padding: EdgeInsets.all(8.0),
-                                child: Icon(Icons.camera_alt,
-                                    color: Colors.white, size: 20),
+                                child: Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ),
@@ -229,7 +250,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Input Fields
+                  // ======= Input Fields
                   _buildInfoCard(
                     icon: Icons.person,
                     label: "Full Name",
@@ -241,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.email_rounded,
                     label: "Email Address",
                     controller: _emailController,
-                    enabled: _isEditing,
+                    enabled: false, // Email field is always disabled
                   ),
                   const SizedBox(height: 16),
                   _buildInfoCard(
@@ -275,62 +296,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // === Custom styled input field card ===
-Widget _buildInfoCard({
-  required IconData icon,
-  required String label,
-  required TextEditingController controller,
-  required bool enabled,
-}) {
-  return Container(
-    decoration: BoxDecoration(
-      color: Colors.white, // ✅ Pure white background
-      borderRadius: BorderRadius.circular(14),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 6,
-          offset: const Offset(0, 3),
-        ),
-      ],
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blueAccent, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              enabled: enabled,
-              style: const TextStyle(
-                color: Colors.black, // ✅ Dark text
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white, // ✅ Input area white background
-                labelText: label,
-                labelStyle: const TextStyle(
-                  color: Colors.black87, // ✅ Dark label text
-                  fontWeight: FontWeight.w500,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                floatingLabelBehavior: FloatingLabelBehavior.auto,
-              ),
-            ),
+  // === Custom input field card ===
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String label,
+    required TextEditingController controller,
+    required bool enabled,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-    ),
-  );
-}
-
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.blueAccent, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: controller,
+                enabled: enabled,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
+                  labelText: label,
+                  labelStyle: const TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                  floatingLabelBehavior: FloatingLabelBehavior.auto,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _showImagePickerBottomSheet() {
     showModalBottomSheet(
@@ -405,4 +425,3 @@ Widget _buildInfoCard({
     return null;
   }
 }
-

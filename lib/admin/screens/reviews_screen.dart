@@ -1,4 +1,3 @@
-// admin/screens/reviews_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -140,7 +139,6 @@ class _ReviewCardState extends State<ReviewCard> {
       formattedDate = DateFormat('dd MMM yyyy').format(date);
     }
 
-    // Get preview text (first 100 characters)
     String previewText = comment.length > 100
         ? '${comment.substring(0, 100)}...'
         : comment;
@@ -245,7 +243,6 @@ class _ReviewCardState extends State<ReviewCard> {
               ),
             ),
 
-            // Rating
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Row(
@@ -266,7 +263,6 @@ class _ReviewCardState extends State<ReviewCard> {
               ),
             ),
 
-            // Comment (preview or full)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
@@ -297,9 +293,7 @@ class _ReviewCardState extends State<ReviewCard> {
               ),
             ),
 
-            // Expanded content (image and actions)
             if (_expanded) ...[
-              // Review image if available
               if (imageBase64 != null)
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -323,7 +317,6 @@ class _ReviewCardState extends State<ReviewCard> {
                   ),
                 ),
 
-              // Action buttons
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Row(
@@ -359,7 +352,6 @@ class _ReviewCardState extends State<ReviewCard> {
   }
 
   void _editReview() {
-    // Create controllers with current values
     final ratingController = TextEditingController(
       text: widget.reviewData['rating']?.toString() ?? '0',
     );

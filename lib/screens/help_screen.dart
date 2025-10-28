@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:laptop_harbor/core/constants/app_constants.dart';
 
 class HelpScreen extends StatelessWidget {
   const HelpScreen({Key? key}) : super(key: key);
@@ -6,7 +8,16 @@ class HelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Help / FAQ')),
+      appBar: AppBar(
+        title: Text(
+          'Help / FAQ',
+          style: GoogleFonts.orbitron(
+            color: AppColors.dark,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -70,9 +81,7 @@ class HelpScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
-                    onPressed: () {
-                      // Navigate to contact form or open email client
-                    },
+                    onPressed: () {},
                     child: const Text('Get in Touch'),
                   ),
                 ],
@@ -129,9 +138,7 @@ class HelpScreen extends StatelessWidget {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(description),
         trailing: const Icon(Icons.arrow_forward_ios),
-        onTap: () {
-          // Navigate to the guide
-        },
+        onTap: () {},
       ),
     );
   }

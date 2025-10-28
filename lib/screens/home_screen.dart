@@ -19,7 +19,6 @@ import 'dart:convert'; // Add this import for base64 decoding
 
 // ===================== CART LOGIC =====================
 class Cart extends ChangeNotifier {
-  // Singleton instance
   static final Cart _instance = Cart._internal();
   factory Cart() => _instance;
   static Cart get instance => _instance;
@@ -84,14 +83,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   User? _currentUser;
-  Map<String, dynamic>? _userData; // Added to store user data from Firestore
+  Map<String, dynamic>? _userData;
   bool _isSearchVisible = false;
   final TextEditingController _searchController = TextEditingController();
   String searchQuery = '';
-  String _selectedBrand = ''; // Added to track selected brand
-  String _selectedCategory = ''; // Added to track selected category
+  String _selectedBrand = '';
+  String _selectedCategory = '';
 
-  // Changed to a getter to pass selectedBrand and selectedCategory to AllProductsScreen
   List<Widget> get _screens => [
     const _HomeBody(),
     const CartScreen(),
@@ -108,19 +106,18 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _currentUser = user;
         if (user != null) {
-          _fetchUserData(); // Fetch user data when user changes
+          _fetchUserData();
         } else {
-          _userData = null; // Clear user data when user logs out
+          _userData = null;
         }
       });
     });
     _currentUser = FirebaseAuth.instance.currentUser;
     if (_currentUser != null) {
-      _fetchUserData(); // Fetch user data on initial load
+      _fetchUserData();
     }
   }
 
-  // Added method to fetch user data from Firestore
   Future<void> _fetchUserData() async {
     if (_currentUser == null) return;
 
@@ -143,7 +140,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      // Reset selected brand and category when navigating to tabs other than All Products
       if (index != 2) {
         _selectedBrand = '';
         _selectedCategory = '';
@@ -151,21 +147,19 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // New method to navigate to brand products
   void _navigateToBrandProducts(String brand) {
     setState(() {
       _selectedBrand = brand;
       _selectedCategory = '';
-      _selectedIndex = 2; // AllProductsScreen ka index
+      _selectedIndex = 2;
     });
   }
 
-  // New method to navigate to category products
   void _navigateToCategoryProducts(String category) {
     setState(() {
       _selectedCategory = category;
       _selectedBrand = '';
-      _selectedIndex = 2; // AllProductsScreen ka index
+      _selectedIndex = 2;
     });
   }
 
@@ -182,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Only show AppBar when on home screen (index 0)
+      // ============== AppBar Start ==============
       appBar: _selectedIndex == 0
           ? AppBar(
               elevation: 0,
@@ -208,23 +202,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: 40,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(
-                          25,
-                        ), // ✅ Fully rounded
+                        borderRadius: BorderRadius.circular(25),
                         border: Border.all(color: AppColors.hint, width: 1),
                       ),
                       child: TextField(
                         controller: _searchController,
                         autofocus: true,
-                        style: const TextStyle(
-                          color: AppColors.dark, // ✅ Text color dark
-                        ),
+                        style: const TextStyle(color: AppColors.dark),
                         decoration: InputDecoration(
                           hintText: 'Search products...',
                           hintStyle: TextStyle(color: AppColors.hint),
                           prefixIcon: const Icon(
                             Icons.search,
-                            color: AppColors.dark, // ✅ Icon dark
+                            color: AppColors.dark,
                           ),
                           suffixIcon: IconButton(
                             icon: const Icon(
@@ -240,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           ),
                           filled: true,
-                          fillColor: Colors.white, // ✅ White background
+                          fillColor: Colors.white,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
                             borderSide: BorderSide(
@@ -277,7 +267,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
               centerTitle: true,
               actions: [
-                // Search Icon
                 if (!_isSearchVisible)
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
@@ -311,15 +300,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                // Cart Icon with Badge
-                // Cart Icon with Badge
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
                     onTap: () {
                       setState(() {
-                        _selectedIndex = 1; // Navigate to cart
-                        // Reset search when navigating to cart
+                        _selectedIndex = 1;
                         _isSearchVisible = false;
                         _searchController.clear();
                         searchQuery = '';
@@ -395,7 +381,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             )
-          : null, // No AppBar for other screens
+          // ============== AppBar Start ==============
+          : null,
       // ================== DRAWER START =================
       drawer: _selectedIndex == 0
           ? Drawer(
@@ -434,13 +421,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Center(
                               child: Text(
                                 "Settings",
-                                style: TextStyle(
-                                  fontSize:
-                                      MediaQuery.of(context).size.width < 600
-                                      ? 22
-                                      : 26,
-                                  fontWeight: FontWeight.bold,
+                                style: GoogleFonts.orbitron(
                                   color: AppColors.dark,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
                                 ),
                               ),
                             ),
@@ -681,13 +665,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             )
           // ================== DRAWER END =================
-          : null, // No drawer for other screens
+          : null,
       backgroundColor: Colors.white,
       body: _isSearchVisible && searchQuery.isNotEmpty
           ? _buildSearchResults()
           : _screens[_selectedIndex],
 
-      // ======== Bottom nav =========
+      // ======== Bottom Nav =========
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -731,7 +715,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final allProducts = snapshot.data!.docs;
 
-        // Local filtering by searchQuery
+        // ===== Local filtering by searchQuery =====
         final products = allProducts.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final name = (data['name'] ?? '').toString().toLowerCase();
@@ -791,7 +775,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     final imageUrl = product['imageUrl'] ?? '';
                     final productId = products[index].id;
 
-                    // Create productWithId to pass to ProductDetailScreen
                     final productWithId = Map<String, dynamic>.from(product);
                     productWithId['id'] = productId;
 
@@ -980,6 +963,7 @@ class _HomeBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          //============ BANNER SECTION ============
           SizedBox(
             height: 180,
             child: SingleChildScrollView(
@@ -1135,6 +1119,7 @@ class _HomeBody extends StatelessWidget {
               ),
             ),
           ),
+          //============ BANNER SECTION END ============
           const SizedBox(height: 24),
           // ====================== TOP BRANDS ======================
           Column(
@@ -1160,7 +1145,6 @@ class _HomeBody extends StatelessWidget {
                       const SizedBox(width: 16),
                       GestureDetector(
                         onTap: () {
-                          // Use the new method instead of Navigator.push
                           final homeScreenState = context
                               .findAncestorStateOfType<_HomeScreenState>();
                           homeScreenState?._navigateToBrandProducts("Dell");
@@ -1190,7 +1174,6 @@ class _HomeBody extends StatelessWidget {
                       ),
                       GestureDetector(
                         onTap: () {
-                          // Use the new method instead of Navigator.push
                           final homeScreenState = context
                               .findAncestorStateOfType<_HomeScreenState>();
                           homeScreenState?._navigateToBrandProducts("HP");
@@ -1220,7 +1203,6 @@ class _HomeBody extends StatelessWidget {
                       ),
                       GestureDetector(
                         onTap: () {
-                          // Use the new method instead of Navigator.push
                           final homeScreenState = context
                               .findAncestorStateOfType<_HomeScreenState>();
                           homeScreenState?._navigateToBrandProducts("Lenovo");
@@ -1250,7 +1232,6 @@ class _HomeBody extends StatelessWidget {
                       ),
                       GestureDetector(
                         onTap: () {
-                          // Use the new method instead of Navigator.push
                           final homeScreenState = context
                               .findAncestorStateOfType<_HomeScreenState>();
                           homeScreenState?._navigateToBrandProducts("Asus");
@@ -1285,7 +1266,7 @@ class _HomeBody extends StatelessWidget {
               ),
             ],
           ),
-          // ====================== TOP BRANDS END ======================
+          // ====================== TOP BRANDS END ====================
 
           // ======================= CATEGORIES =======================
           const Text(
@@ -1298,7 +1279,7 @@ class _HomeBody extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 100, // Reduced from 120
+            height: 100,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
@@ -1366,7 +1347,7 @@ class _HomeBody extends StatelessWidget {
             ),
           ),
 
-          // ======================= CATEGORIES END =======================
+          // =================== CATEGORIES END ===================
           const SizedBox(height: 24),
           // =============== FEATURED PRODUCTS START ===============
           LayoutBuilder(
@@ -1692,7 +1673,7 @@ class _HomeBody extends StatelessWidget {
                 },
               );
             },
-          ),
+          ), // =============== FEATURED PRODUCTS END ===============
         ],
       ),
     );
@@ -1719,34 +1700,29 @@ class _LaptopCategoryCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 85, // Reduced from 100
+        width: 85,
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: gradient,
-          // Removed shadow
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 40, // Reduced from 50
-              height: 40, // Reduced from 50
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(
-                icon,
-                size: 24,
-                color: Colors.white,
-              ), // Reduced from 28
+              child: Icon(icon, size: 24, color: Colors.white),
             ),
-            const SizedBox(height: 8), // Reduced from 10
+            const SizedBox(height: 8),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 13, // Reduced from 14
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
